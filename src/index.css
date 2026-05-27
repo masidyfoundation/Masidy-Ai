@@ -1,0 +1,235 @@
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@theme {
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+body {
+  background-color: #ffffff;
+  color: #0d0d0d;
+  font-family: var(--font-sans);
+}
+
+/* Beautiful custom fine scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #e5e5e5;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #cccccc;
+}
+
+/* Outstanding markdown formatting specifically tailored for elegant ChatGPT light bubbles */
+.markdown-body {
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+  font-weight: 600;
+  color: #0d0d0d;
+  margin-top: 1rem;
+  margin-bottom: 0.4rem;
+}
+
+.markdown-body h1 { font-size: 1.2rem; }
+.markdown-body h2 { font-size: 1.1rem; }
+.markdown-body h3 { font-size: 1.0rem; }
+
+.markdown-body p {
+  margin-bottom: 0.75rem;
+}
+
+.markdown-body p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body ul, 
+.markdown-body ol {
+  margin-left: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.markdown-body ul {
+  list-style-type: disc;
+}
+
+.markdown-body ol {
+  list-style-type: decimal;
+}
+
+.markdown-body li {
+  margin-bottom: 0.25rem;
+}
+
+.markdown-body code {
+  background-color: #f4f4f4;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.825rem;
+  padding: 0.12rem 0.3rem;
+  border-radius: 4px;
+  color: #c2410c; /* clean orange-red for inline code on light theme */
+}
+
+.markdown-body pre {
+  background-color: #f9f9f9;
+  border: 1px solid #e5e5e5;
+  padding: 0.85rem;
+  overflow-x: auto;
+  margin-top: 0.6rem;
+  margin-bottom: 0.8rem;
+  border-radius: 6px;
+}
+
+.markdown-body pre code {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  color: #171717;
+  font-size: 0.825rem;
+}
+
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.markdown-body th {
+  background-color: #f4f4f4;
+  border: 1px solid #e5e5e5;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-weight: 500;
+  color: #171717;
+}
+
+.markdown-body td {
+  border: 1px solid #e5e5e5;
+  padding: 0.5rem 0.75rem;
+  color: #404040;
+}
+
+.markdown-body blockquote {
+  border-left: 3px solid #000000;
+  background-color: #f9f9f9;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+  color: #404040;
+  border-radius: 0 4px 4px 0;
+}
+
+/* HIGH FIDELITY GLOBAL DARK MODE STYLES & OVERRIDES */
+html.dark, html.dark body {
+  background-color: #0c0c0e !important;
+  color: #f4f4f5 !important;
+}
+
+html.dark #chat-workspace,
+html.dark .bg-white,
+html.dark #settings-suite-overlay > div,
+html.dark .prose-stone .prose {
+  background-color: #0c0c0e !important;
+  color: #f4f4f5 !important;
+  border-color: #27272a !important;
+}
+
+html.dark .bg-neutral-51,
+html.dark .bg-\[\#f4f4f4\],
+html.dark .bg-\[\#f9f9f9\],
+html.dark .bg-neutral-50\/60,
+html.dark .bg-neutral-50 {
+  background-color: #121214 !important;
+}
+
+html.dark .border-neutral-200,
+html.dark .border-\[\#e5e5e5\],
+html.dark .border-neutral-105,
+html.dark .border-neutral-100 {
+  border-color: #27272a !important;
+}
+
+html.dark .text-zinc-900,
+html.dark .text-neutral-900,
+html.dark .text-\[\#0d0d0d\],
+html.dark .text-neutral-800,
+html.dark .text-zinc-800,
+html.dark .text-zinc-700 {
+  color: #e4e4e7 !important;
+}
+
+html.dark .text-zinc-400,
+html.dark .text-zinc-500,
+html.dark .text-zinc-620 {
+  color: #a1a1aa !important;
+}
+
+html.dark input,
+html.dark textarea,
+html.dark select {
+  background-color: #161619 !important;
+  color: #f4f4f5 !important;
+  border-color: #27272a !important;
+}
+
+html.dark .hover\:bg-neutral-51:hover,
+html.dark .hover\:bg-neutral-100:hover,
+html.dark .hover\:bg-neutral-200\/40:hover,
+html.dark .hover\:bg-neutral-200\/60:hover {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+html.dark .markdown-body h1,
+html.dark .markdown-body h2,
+html.dark .markdown-body h3,
+html.dark .markdown-body h4 {
+  color: #ffffff !important;
+}
+
+html.dark .markdown-body code {
+  background-color: #181c24 !important;
+  color: #f43f5e !important;
+}
+
+html.dark .markdown-body pre {
+  background-color: #111113 !important;
+  border-color: #27272a !important;
+}
+
+html.dark .markdown-body pre code {
+  color: #e4e4e7 !important;
+}
+
+html.dark .markdown-body td {
+  border-color: #27272a !important;
+  color: #e4e4e7 !important;
+}
+
+html.dark .markdown-body th {
+  background-color: #181c24 !important;
+  border-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+html.dark .markdown-body blockquote {
+  border-left-color: #6366f1 !important;
+  background-color: #181c24 !important;
+  color: #d4d4d8 !important;
+}
