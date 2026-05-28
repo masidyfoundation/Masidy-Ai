@@ -174,43 +174,9 @@ export default function Sidebar({
                 </div>
               </div>
 
-              {/* 2. OAuth Authentication */}
+              {/* 2. Real-time Rate limiting telemetry */}
               <div className="space-y-1.5 pt-1 border-t border-neutral-100 dark:border-zinc-800">
-                <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block font-mono">2. SSO Access Verification</span>
-                {isAuthenticated ? (
-                  <button
-                    onClick={() => {
-                      setDropdownOpen(false);
-                      onSignOut?.();
-                    }}
-                    className="w-full flex items-center justify-between py-2 px-2.5 bg-neutral-51 dark:bg-zinc-900 hover:bg-red-50 dark:hover:bg-red-900/20 border border-neutral-200 dark:border-zinc-800 text-xs font-bold rounded-xl text-red-600 dark:text-red-400 transition cursor-pointer text-left"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <LogOut className="w-3.5 h-3.5" />
-                      <span>Sign Out</span>
-                    </div>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setDropdownOpen(false);
-                      onConnectOAuth();
-                    }}
-                    className="w-full flex items-center justify-between py-2 px-2.5 bg-neutral-51 dark:bg-zinc-900 hover:bg-neutral-100 dark:hover:bg-zinc-800 border border-neutral-200 dark:border-zinc-800 text-xs font-bold rounded-xl text-indigo-600 dark:text-indigo-400 transition cursor-pointer text-left"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <UserPlus className="w-3.5 h-3.5" />
-                      <span>Sign In / Create Account</span>
-                    </div>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-
-              {/* 3. Real-time Rate limiting telemetry */}
-              <div className="space-y-1.5 pt-1 border-t border-neutral-100 dark:border-zinc-800">
-                <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block font-mono">3. Rate Limit Telemetry</span>
+                <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block font-mono">2. Rate Limit Telemetry</span>
                 <div className="bg-neutral-51 dark:bg-zinc-900/60 border border-neutral-200 dark:border-zinc-800 p-2 rounded-lg space-y-1 select-none">
                   <div className="flex justify-between items-center text-[10px]">
                      <span className="text-zinc-500">Tier status:</span>

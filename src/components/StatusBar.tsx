@@ -152,14 +152,6 @@ export default function StatusBar({
            <span>Plan: <strong className="text-indigo-700 dark:text-indigo-300 ml-0.5">{activePlan}</strong></span>
         </div>
 
-        {/* Settings Action Capsule Button */}
-        <button
-          onClick={showCredentialsModal}
-          className="bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-950 hover:to-slate-900 dark:from-slate-600 dark:to-slate-700 dark:hover:from-slate-700 dark:hover:to-slate-800 text-white font-bold text-xs py-1.5 px-4 rounded-lg transition-all duration-200 cursor-pointer shadow-md hover:shadow-lg active:scale-95 uppercase tracking-wider"
-        >
-          Preferences
-        </button>
-
       </div>
 
     </div>
