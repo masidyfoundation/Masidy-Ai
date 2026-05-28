@@ -22,6 +22,26 @@ const PORT = 3000;
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 const DB_FILE = path.join(process.cwd(), "local_db.json");
 
+// Tier normalization for backward compatibility with Supabase
+function normalizeTier(tier: string | undefined): string {
+  if (!tier) return "FREE";
+  
+  const tierMap: { [key: string]: string } = {
+    // Old tier names (for existing Supabase users)
+    "Free Standard": "FREE",
+    "Masidy Pro": "BASE",
+    "Landmark Enterprise": "PRO",
+    // New tier names
+    "FREE": "FREE",
+    "STARTER": "STARTER",
+    "BASE": "BASE",
+    "PRO": "PRO",
+    "MAX": "MAX"
+  };
+  
+  return tierMap[tier] || "FREE";
+}
+
 interface LocalMessage {
   id: string;
   conversation_id: string;
@@ -66,9 +86,15 @@ function checkRateLimit(ipOrKey: string, tier: string): { allowed: boolean; rema
   // Retain only timestamps from within the active sliding minute window
   record.timestamps = record.timestamps.filter(ts => now - ts < windowMs);
 
-  let limit = 8; // Free standard gets 8 requests/minute limit
-  if (tier === "Masidy Pro") limit = 25;
-  if (tier === "Landmark Enterprise") limit = 999;
+  // Normalize tier (handles both old and new names)
+  const normalizedTier = normalizeTier(tier);
+
+  // Tier-based rate limits
+  let limit = 8; // FREE tier default
+  if (normalizedTier === "STARTER") limit = 15;   // $5/mo
+  if (normalizedTier === "BASE") limit = 25;      // $20/mo
+  if (normalizedTier === "PRO") limit = 50;       // $50/mo
+  if (normalizedTier === "MAX") limit = 999;      // $100/mo
 
   let allowed = true;
   if (record.timestamps.length >= limit) {
@@ -118,6 +144,156 @@ function saveDatabase(db: LocalDB) {
 
 async function startServer() {
   const app = express();
+  
+  // Webhook must use raw body for signature verification
+  app.post("/api/webhooks/stripe", express.raw({ type: "application/json" }), async (req, res) => {
+    const signature = req.headers["stripe-signature"] as string;
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    
+    if (!signature || !webhookSecret) {
+      console.warn("⚠️ Webhook received but signature or secret missing");
+      return res.status(400).json({ error: "Missing signature or webhook secret" });
+    }
+
+    try {
+      const client = getStripe();
+      if (!client) {
+        console.warn("⚠️ Stripe client not initialized");
+        return res.status(400).json({ error: "Stripe not configured" });
+      }
+
+      // Verify the webhook signature
+      const event = client.webhooks.constructEvent(
+        req.body,
+        signature,
+        webhookSecret
+      ) as any;
+
+      console.log(`✅ Webhook verified: ${event.type}`);
+
+      const db = loadDatabase();
+      let updated = false;
+
+      // Handle different webhook event types
+      switch (event.type) {
+        case "payment_intent.succeeded": {
+          const paymentIntent = event.data.object;
+          console.log(`💰 Payment succeeded: ${paymentIntent.id}`);
+          
+          // Find customer and update tier
+          if (paymentIntent.customer) {
+            const user = db.users.find(u => u.external_id === paymentIntent.customer);
+            if (user && paymentIntent.metadata?.tierName) {
+              user.tier = paymentIntent.metadata.tierName;
+              console.log(`✅ Updated ${user.external_id} to tier: ${user.tier}`);
+              updated = true;
+            }
+          }
+          break;
+        }
+
+        case "payment_intent.payment_failed": {
+          const paymentIntent = event.data.object;
+          console.log(`❌ Payment failed: ${paymentIntent.id}`);
+          
+          // Optionally downgrade tier or send notification
+          if (paymentIntent.customer) {
+            const user = db.users.find(u => u.external_id === paymentIntent.customer);
+            if (user) {
+              console.log(`⚠️ Payment failed for user: ${user.external_id}`);
+              // You might want to send them an email or downgrade tier
+            }
+          }
+          break;
+        }
+
+        case "customer.subscription.created": {
+          const subscription = event.data.object;
+          console.log(`📅 Subscription created: ${subscription.id}`);
+          
+          if (subscription.customer) {
+            const user = db.users.find(u => u.external_id === subscription.customer);
+            if (user && subscription.metadata?.tierName) {
+              user.tier = subscription.metadata.tierName;
+              console.log(`✅ Subscription active for ${user.external_id}: ${user.tier}`);
+              updated = true;
+            }
+          }
+          break;
+        }
+
+        case "customer.subscription.updated": {
+          const subscription = event.data.object;
+          console.log(`🔄 Subscription updated: ${subscription.id}`);
+          
+          if (subscription.customer) {
+            const user = db.users.find(u => u.external_id === subscription.customer);
+            if (user && subscription.metadata?.tierName) {
+              user.tier = subscription.metadata.tierName;
+              console.log(`✅ Subscription tier updated to: ${user.tier}`);
+              updated = true;
+            }
+          }
+          break;
+        }
+
+        case "customer.subscription.deleted": {
+          const subscription = event.data.object;
+          console.log(`🗑️ Subscription canceled: ${subscription.id}`);
+          
+          if (subscription.customer) {
+            const user = db.users.find(u => u.external_id === subscription.customer);
+            if (user) {
+              user.tier = "FREE";
+              console.log(`✅ Downgraded ${user.external_id} to FREE tier`);
+              updated = true;
+            }
+          }
+          break;
+        }
+
+        case "invoice.payment_succeeded": {
+          const invoice = event.data.object;
+          console.log(`💵 Invoice paid: ${invoice.id}`);
+          // Subscription should already be active from subscription events
+          break;
+        }
+
+        case "invoice.payment_failed": {
+          const invoice = event.data.object;
+          console.log(`⚠️ Invoice payment failed: ${invoice.id}`);
+          // Could send retry notification here
+          break;
+        }
+
+        case "charge.dispute.created": {
+          const dispute = event.data.object;
+          console.log(`⚠️ Dispute filed: ${dispute.id}`);
+          // You might want to alert the user or flag their account
+          break;
+        }
+
+        default:
+          console.log(`ℹ️ Unhandled event type: ${event.type}`);
+      }
+
+      // Save updated database
+      if (updated) {
+        saveDatabase(db);
+      }
+
+      // Always respond with 200 OK to Stripe (even if we don't handle the event)
+      res.json({ received: true, eventId: event.id });
+
+    } catch (err: any) {
+      console.error("❌ Webhook error:", err.message);
+      res.status(400).json({ 
+        error: "Webhook error",
+        message: err.message 
+      });
+    }
+  });
+
   app.use(express.json());
 
   // API 1: /api/health
@@ -164,19 +340,36 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  // Stripe & Subscription checkout integration endpoint
+  // Stripe & Subscription checkout integration endpoint - NEW TIER SYSTEM
   app.post("/api/payment/checkout", async (req, res) => {
     const { tierName, successUrl, cancelUrl } = req.body;
     const db = loadDatabase();
 
-    // Setup active redirect URL mappings
+    // Map tier names to pricing
+    const tierPricing: { [key: string]: { amount: number; priceId: string } } = {
+      "FREE": { amount: 0, priceId: "" },
+      "STARTER": { amount: 500, priceId: process.env.STRIPE_PRICE_STARTER || "price_starter_5" },
+      "BASE": { amount: 2000, priceId: process.env.STRIPE_PRICE_BASE || "price_base_20" },
+      "PRO": { amount: 5000, priceId: process.env.STRIPE_PRICE_PRO || "price_pro_50" },
+      "MAX": { amount: 10000, priceId: process.env.STRIPE_PRICE_MAX || "price_max_100" },
+      // Legacy support
+      "Masidy Pro": { amount: 1500, priceId: process.env.STRIPE_PRICE_PRO || "price_1OvJ4vF4eNlX1mR2" },
+      "Landmark Enterprise": { amount: 4900, priceId: process.env.STRIPE_PRICE_ENTERPRISE || "price_1OvJ5fF4eNlX1mR2" }
+    };
+
+    const pricing = tierPricing[tierName] || tierPricing["STARTER"];
+
+    // Cannot checkout FREE tier
+    if (tierName === "FREE") {
+      return res.json({
+        success: false,
+        message: "Free tier is automatically assigned. No checkout needed."
+      });
+    }
+
     const client = getStripe();
     if (client) {
       try {
-        let priceMapping = "price_premium";
-        if (tierName === "Masidy Pro") priceMapping = process.env.STRIPE_PRICE_PRO || "price_1OvJ4vF4eNlX1mR2";
-        if (tierName === "Landmark Enterprise") priceMapping = process.env.STRIPE_PRICE_ENTERPRISE || "price_1OvJ5fF4eNlX1mR2";
-
         const origin = req.headers.origin || "http://localhost:3000";
         const session = await client.checkout.sessions.create({
           payment_method_types: ["card"],
@@ -186,9 +379,9 @@ async function startServer() {
                 currency: "usd",
                 product_data: {
                   name: tierName,
-                  description: `Full access upgrade to Masidy Workspace - ${tierName} plan`,
+                  description: `Masidy AI - ${tierName} tier subscription`,
                 },
-                unit_amount: tierName === "Masidy Pro" ? 1500 : 4900,
+                unit_amount: pricing.amount,
                 recurring: {
                   interval: "month",
                 },
