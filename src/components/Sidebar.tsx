@@ -34,6 +34,8 @@ interface SidebarProps {
   theme: "light" | "dark";
   onToggleTheme: () => void;
   onConnectOAuth: () => void;
+  onSignOut?: () => void;
+  isAuthenticated?: boolean;
   setActiveView: (view: "chat" | "images" | "research" | "pricing" | "guide") => void;
   activeView: "chat" | "images" | "research" | "pricing" | "guide";
   username: string;
@@ -56,6 +58,8 @@ export default function Sidebar({
   theme,
   onToggleTheme,
   onConnectOAuth,
+  onSignOut,
+  isAuthenticated = false,
   setActiveView,
   activeView,
   username,
@@ -173,19 +177,35 @@ export default function Sidebar({
               {/* 2. OAuth Authentication */}
               <div className="space-y-1.5 pt-1 border-t border-neutral-100 dark:border-zinc-800">
                 <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block font-mono">2. SSO Access Verification</span>
-                <button
-                  onClick={() => {
-                    setDropdownOpen(false);
-                    onConnectOAuth();
-                  }}
-                  className="w-full flex items-center justify-between py-2 px-2.5 bg-neutral-51 dark:bg-zinc-900 hover:bg-neutral-100 dark:hover:bg-zinc-800 border border-neutral-200 dark:border-zinc-800 text-xs font-bold rounded-xl text-indigo-600 dark:text-indigo-400 transition cursor-pointer text-left"
-                >
-                  <div className="flex items-center space-x-2">
-                    <UserPlus className="w-3.5 h-3.5" />
-                    <span>Connect Google / SSH</span>
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
+                {isAuthenticated ? (
+                  <button
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      onSignOut?.();
+                    }}
+                    className="w-full flex items-center justify-between py-2 px-2.5 bg-neutral-51 dark:bg-zinc-900 hover:bg-red-50 dark:hover:bg-red-900/20 border border-neutral-200 dark:border-zinc-800 text-xs font-bold rounded-xl text-red-600 dark:text-red-400 transition cursor-pointer text-left"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Sign Out</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      onConnectOAuth();
+                    }}
+                    className="w-full flex items-center justify-between py-2 px-2.5 bg-neutral-51 dark:bg-zinc-900 hover:bg-neutral-100 dark:hover:bg-zinc-800 border border-neutral-200 dark:border-zinc-800 text-xs font-bold rounded-xl text-indigo-600 dark:text-indigo-400 transition cursor-pointer text-left"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>Sign In / Create Account</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
 
               {/* 3. Real-time Rate limiting telemetry */}

@@ -10,6 +10,8 @@ import PlansPricing from "./components/PlansPricing";
 import SystemGuide from "./components/SystemGuide";
 import ModelSelector from "./components/ModelSelector";
 import ToastContainer from "./components/ToastContainer";
+import AuthModal from "./components/AuthModal";
+import { supabase } from "./lib/supabase";
 import { Conversation, Message, MasidyModel } from "./types";
 
 interface ToastMessage {
@@ -30,6 +32,10 @@ export default function App() {
   const [isThinking, setIsThinking] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  // Auth state
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Masidy Model selection
   const [selectedModel, setSelectedModel] = useState(() => {
@@ -152,7 +158,7 @@ export default function App() {
         };
         const mappedTier = tierMap[activePlan] || "FREE";
         
-        const res = await fetch(`http://localhost:8000/models?tier=${mappedTier}`);
+        const res = await fetch(`/api/models?tier=${mappedTier}`);
         const data = await res.json();
         if (data.models) {
           setAvailableModels(data.models);
@@ -195,7 +201,7 @@ export default function App() {
     return () => window.removeEventListener("message", handleOAuthMessage);
   }, []);
 
-  // Apply body element dark classes on theme changes
+  // Apply dark mode classes on theme changes
   useEffect(() => {
     if (theme === "dark") {
        document.documentElement.classList.add("dark");
@@ -203,6 +209,44 @@ export default function App() {
        document.documentElement.classList.remove("dark");
     }
   }, [theme]);
+
+  // Supabase auth session listener
+  useEffect(() => {
+    // Check for existing session on mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const user = session.user;
+        const displayName =
+          user.user_metadata?.full_name ||
+          user.user_metadata?.name ||
+          user.email?.split("@")[0] ||
+          "Masidy User";
+        setUsername(displayName);
+        setIsAuthenticated(true);
+        localStorage.setItem("masidy_username", displayName);
+      }
+    });
+
+    // Listen for auth state changes (sign in, sign out, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const user = session.user;
+        const displayName =
+          user.user_metadata?.full_name ||
+          user.user_metadata?.name ||
+          user.email?.split("@")[0] ||
+          "Masidy User";
+        setUsername(displayName);
+        setIsAuthenticated(true);
+        localStorage.setItem("masidy_username", displayName);
+        setShowAuthModal(false);
+      } else {
+        setIsAuthenticated(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Sync pricing plan state changes instantly across components
   useEffect(() => {
@@ -465,18 +509,15 @@ export default function App() {
   };
 
   const handleConnectOAuth = async () => {
-    try {
-      const resp = await fetch(`/api/auth/url?redirect_uri=${encodeURIComponent(window.location.origin + '/auth/callback')}`);
-      if (resp.ok) {
-        const { url } = await resp.json();
-        const popup = window.open(url, "Masidy OAuth SSO", "width=520,height=620");
-        if (!popup) {
-          alert("Popup blocked! Verify browser permissions to allow OAuth popup login.");
-        }
-      }
-    } catch (e) {
-      console.error("SSO Connection fault:", e);
-    }
+    setShowAuthModal(true);
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setIsAuthenticated(false);
+    setUsername("Masidy User");
+    localStorage.removeItem("masidy_username");
+    addToast("Signed out successfully", "success", 3000);
   };
 
   const handleToggleSidebarCollapse = () => {
@@ -540,6 +581,8 @@ export default function App() {
           theme={theme}
           onToggleTheme={handleToggleTheme}
           onConnectOAuth={handleConnectOAuth}
+          onSignOut={handleSignOut}
+          isAuthenticated={isAuthenticated}
           setActiveView={setActiveView}
           activeView={activeView}
           username={username}
@@ -604,6 +647,19 @@ export default function App() {
 
       {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onRemoveToast={removeToast} />
+
+      {/* Supabase Auth Modal */}
+      {showAuthModal && (
+        <AuthModal
+          onClose={() => setShowAuthModal(false)}
+          onAuthSuccess={({ email, name }) => {
+            setUsername(name);
+            setIsAuthenticated(true);
+            localStorage.setItem("masidy_username", name);
+            addToast(`Welcome, ${name}!`, "success", 3000);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -307,6 +307,34 @@ async function startServer() {
     });
   });
 
+  // API: /api/models - Proxy to FastAPI backend
+  app.get("/api/models", async (req, res) => {
+    try {
+      const tier = req.query.tier || "FREE";
+      const backendRes = await fetch(`${BACKEND_URL}/models?tier=${encodeURIComponent(String(tier))}`);
+      if (!backendRes.ok) {
+        throw new Error(`Backend returned ${backendRes.status}`);
+      }
+      const data = await backendRes.json();
+      res.json(data);
+    } catch (err: any) {
+      console.error("Models proxy error:", err.message);
+      // Return fallback models so the selector always has something to show
+      res.json({
+        models: [
+          { id: "free-base", name: "Masidy Free", description: "Llama 3.1 8B — fast general assistant" },
+          { id: "starter-base", name: "Masidy Starter", description: "Llama 3.1 8B — enhanced context" },
+          { id: "base-general", name: "Masidy Base", description: "Llama 3.3 70B — advanced reasoning" },
+          { id: "pro-general", name: "Masidy Pro", description: "Llama 3.3 70B — full capabilities" },
+          { id: "max-general", name: "Masidy Max", description: "Llama 3.1 405B — maximum power" }
+        ],
+        tier: "FREE",
+        default_model: "free-base",
+        total: 5
+      });
+    }
+  });
+
   // API 2: /api/conversations (to list sessions in terminal side rail)
   app.get("/api/conversations", (req, res) => {
     const db = loadDatabase();

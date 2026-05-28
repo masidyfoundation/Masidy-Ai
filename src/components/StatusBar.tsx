@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Sparkles, ChevronDown, RotateCcw, ShieldCheck, HelpCircle, Key, Activity, Menu } from "lucide-react";
 import { MasidyModel } from "../types";
 
@@ -28,6 +28,20 @@ export default function StatusBar({
   onModelChange
 }: StatusBarProps) {
   const [modelDropdown, setModelDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setModelDropdown(false);
+      }
+    };
+    if (modelDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [modelDropdown]);
   
   // Find the current model display name
   const currentModel = availableModels.find(m => m.id === selectedModel);
@@ -53,7 +67,7 @@ export default function StatusBar({
     <div className="bg-gradient-to-r from-white to-slate-50 dark:from-[#0c0c0e] dark:to-zinc-950 border-b border-slate-200 dark:border-zinc-800/80 h-14 px-5 flex items-center justify-between text-slate-900 dark:text-zinc-200 select-none shrink-0 font-sans transition-colors duration-150 shadow-sm">
       
       {/* 1. Model Selector Left (Masidy customized, no ChatGPT dropdown leftovers) */}
-      <div className="flex items-center space-x-3 relative">
+      <div className="flex items-center space-x-3 relative" ref={dropdownRef}>
         {isSidebarCollapsed && (
           <button
             onClick={onToggleSidebar}
@@ -80,28 +94,34 @@ export default function StatusBar({
         </div>
 
         {/* Small operational models list box popup */}
-        {modelDropdown && availableModels.length > 0 && (
+        {modelDropdown && (
           <div className="absolute top-12 left-0 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-800 rounded-lg shadow-lg p-3 z-50 w-56 text-left space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-100">
              <span className="text-[9px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider px-3 block mb-2">AI Models</span>
              
-             {availableModels.map((model) => (
-               <button 
-                 key={model.id}
-                 onClick={() => { 
-                   setModelDropdown(false); 
-                   onModelChange?.(model.id);
-                 }}
-                 className={`w-full text-left py-2 px-3 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-xs font-semibold flex justify-between items-center cursor-pointer transition-all ${selectedModel === model.id ? "bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700/50" : ""}`}
-               >
-                  <div className="flex flex-col">
-                    <span className="text-slate-900 dark:text-zinc-100">{model.name}</span>
-                    <span className="text-[8px] text-slate-500 dark:text-slate-400 font-normal">{model.description}</span>
-                  </div>
-                  {selectedModel === model.id && (
-                    <span className="px-2 py-1 bg-indigo-200 dark:bg-indigo-900/60 text-[8px] font-bold text-indigo-700 dark:text-indigo-300 rounded uppercase tracking-wide">Active</span>
-                  )}
-               </button>
-             ))}
+             {availableModels.length === 0 ? (
+               <div className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
+                 Loading models... (backend connecting)
+               </div>
+             ) : (
+               availableModels.map((model) => (
+                 <button 
+                   key={model.id}
+                   onClick={() => { 
+                     setModelDropdown(false); 
+                     onModelChange?.(model.id);
+                   }}
+                   className={`w-full text-left py-2 px-3 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-xs font-semibold flex justify-between items-center cursor-pointer transition-all ${selectedModel === model.id ? "bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700/50" : ""}`}
+                 >
+                    <div className="flex flex-col">
+                      <span className="text-slate-900 dark:text-zinc-100">{model.name}</span>
+                      <span className="text-[8px] text-slate-500 dark:text-slate-400 font-normal">{model.description}</span>
+                    </div>
+                    {selectedModel === model.id && (
+                      <span className="px-2 py-1 bg-indigo-200 dark:bg-indigo-900/60 text-[8px] font-bold text-indigo-700 dark:text-indigo-300 rounded uppercase tracking-wide">Active</span>
+                    )}
+                 </button>
+               ))
+             )}
           </div>
         )}
       </div>
