@@ -11,7 +11,6 @@ services:
   - type: web
     name: masidy-backend
     runtime: python
-    pythonVersion: 3.11
     startCommand: gunicorn -w 4 -b 0.0.0.0:8000 backend.app:app
     envVars:
       - key: DATABASE_URL
@@ -27,7 +26,6 @@ services:
   - type: web
     name: masidy-gateway
     runtime: node
-    nodeVersion: 20
     startCommand: node dist/server.cjs
     envVars:
       - key: BACKEND_URL
@@ -40,14 +38,3 @@ services:
         fromDatabase:
           name: masidy-db
           property: connectionString
-
-  - type: pserv
-    name: masidy-db
-    runtime: postgres
-    plan: free
-    ipAllowList: []
-    envVars:
-      - key: POSTGRES_DB
-        value: masidy
-      - key: POSTGRES_USER
-        value: masidy_user
