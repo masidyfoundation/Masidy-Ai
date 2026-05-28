@@ -801,15 +801,6 @@ async function startServer() {
         log("DECIDE_BRAIN", "Instruction parsed. Routine task aligned. Routing to FastAPI.", "INFO");
       }
 
-      // Build model messages stack
-      const sysInstruction = 
-        "You are a helpful, knowledgeable AI assistant. Answer questions directly and accurately. " +
-        "Be concise unless detail is needed. Never start your response by introducing yourself. Just answer.\n" +
-        (searchContext ? `[ADDITIONAL WEB RESEARCH CONTEXT]:\n${searchContext}\n` : "");
-
-      // Compile message sequence
-      const parts: any[] = [{ text: message }];
-      
       let answerText = "";
 
       log("MODEL_ROUTE", "Routing computational payload to FastAPI backend (Groq Llama)", "INFO");

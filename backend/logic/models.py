@@ -18,8 +18,8 @@ GROQ_MODELS = {
     "llama-3.1-405b": "llama-3.1-405b-reasoning"
 }
 
-# Shared base system prompt — natural, helpful, no self-introduction spam
-BASE_PROMPT = """You are a helpful, knowledgeable AI assistant. Answer questions directly and accurately. Be concise unless detail is needed. Never start your response by introducing yourself or explaining what you are. Just answer."""
+# Shared base system prompt — minimal, just answer normally
+BASE_PROMPT = "You are a helpful AI assistant."
 
 # Model Definitions with Actual Groq LLM Backing
 MASIDY_MODELS = {
