@@ -781,31 +781,17 @@ async function startServer() {
       }
       log("INPUT_STORE", "Buffered instruction stack to localized persistence", "INFO");
 
-      // Extract conversational history
-      const history = db.messages
-        .filter((m) => m.conversation_id === activeConvId)
-        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-
-      // Think-before-tongue check (does the user query trigger Live Search / Research?)
       const msgLower = message.toLowerCase();
       const needsSearch = /search|research|google|weather|price|stock|recent|current|latest|news|how many|who is|upcoming/i.test(msgLower);
-      
-      let searchContext = "";
-      let groundingChunks: any[] = [];
-
       if (needsSearch) {
-        log("DECIDE_BRAIN", "Keyword alignment triggered. Directing sub-task: LIVE_RESEARCH", "SUCCESS");
         log("RESEARCH_TRIGGER", `Research query routed to FastAPI backend for: '${message}'`, "INFO");
-        // Research will be handled by FastAPI backend
-      } else {
-        log("DECIDE_BRAIN", "Instruction parsed. Routine task aligned. Routing to FastAPI.", "INFO");
       }
 
       let answerText = "";
 
       log("MODEL_ROUTE", "Routing computational payload to FastAPI backend (Groq Llama)", "INFO");
       try {
-        // Proxy request to FastAPI backend
+        // Proxy request to FastAPI backend — backend fetches its own history from Supabase
         const backendResponse = await fetch(`${BACKEND_URL}/api/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -813,7 +799,8 @@ async function startServer() {
             user_id,
             conversation_id: activeConvId,
             message,
-            history: history.slice(-12)
+            model: req.body.model || "free-base",
+            tier: req.body.tier || "FREE"
           })
         });
 
@@ -861,7 +848,6 @@ async function startServer() {
         conversation_id: activeConvId,
         answer: answerText,
         logs: telemetryLogs,
-        groundingChunks: groundingChunks,
       });
 
     } catch (err: any) {
