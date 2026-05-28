@@ -59,6 +59,17 @@ class CodeExecutionRequest(BaseModel):
     code: str
     language: str  # python or javascript
 
+@app.get("/")
+def root():
+    """Root endpoint - API documentation available at /docs"""
+    return {
+        "name": "Masidy AI Terminal API",
+        "version": "1.0.0",
+        "status": "online",
+        "docs": "/docs",
+        "health": "/health"
+    }
+
 @app.get("/health")
 def health_check():
     """
