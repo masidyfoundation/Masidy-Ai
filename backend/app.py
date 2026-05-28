@@ -41,7 +41,8 @@ class ChatRequest(BaseModel):
     user_id: str
     conversation_id: Optional[str] = None
     message: str
-    model: str = "masidy-pro"  # Model selection
+    model: str = "free-base"  # Model selection
+    tier: str = "FREE"  # User tier for model access control
 
 class ImageRequest(BaseModel):
     prompt: str
@@ -87,13 +88,30 @@ def health_check():
 
 # ========== MODEL MANAGEMENT ==========
 @app.get("/models")
-def list_available_models():
-    """List all available Masidy model versions"""
-    return {
-        "models": list_models(),
-        "default_model": "masidy-pro",
-        "total": len(list_models())
-    }
+def list_available_models(tier: str = "FREE"):
+    """List all available Masidy model versions, optionally filtered by tier"""
+    from .logic.models import list_models_by_tier, list_models
+    
+    # Normalize tier for backward compatibility
+    normalized_tier = normalize_tier(tier) if tier else "FREE"
+    
+    if normalized_tier in ["FREE", "STARTER", "BASE", "PRO", "MAX"]:
+        models = list_models_by_tier(normalized_tier)
+        return {
+            "models": models,
+            "tier": normalized_tier,
+            "default_model": models[0]["id"] if models else "free-base",
+            "total": len(models)
+        }
+    else:
+        # Return all models
+        all_models = list_models()
+        return {
+            "models": all_models,
+            "default_model": "free-base",
+            "total": len(all_models),
+            "tiers": ["FREE", "STARTER", "BASE", "PRO", "MAX"]
+        }
 
 # ========== IMAGE GENERATION ==========
 @app.post("/generate-image")
@@ -141,41 +159,87 @@ async def execute_code_endpoint(request: CodeExecutionRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Code execution failed: {str(e)}")
 
+# Tier normalization for backward compatibility with Supabase
+def normalize_tier(tier: str = None) -> str:
+    """Convert old tier names to new tier names"""
+    if not tier:
+        return "FREE"
+    
+    tier_map = {
+        # Old tier names (for existing Supabase users)
+        "Free Standard": "FREE",
+        "Masidy Pro": "BASE",
+        "Landmark Enterprise": "PRO",
+        # New tier names
+        "FREE": "FREE",
+        "STARTER": "STARTER",
+        "BASE": "BASE",
+        "PRO": "PRO",
+        "MAX": "MAX"
+    }
+    
+    return tier_map.get(tier, "FREE")
+
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):
     """
-    Processes chat requests using Llama 3.1 8B on Groq, integrating Supabase memory,
-    research triggers, and structured telemetry profiling.
+    Processes chat requests using tier-based Groq LLM routing,
+    integrating Supabase memory, research triggers, and telemetry.
+    
+    Model access controlled by user tier:
+    - FREE: only free-base (Llama 8B)
+    - STARTER: starter-base, starter-research (8B + Mixtral)
+    - BASE: base-general, base-research, base-code (8B + Mixtral + 70B)
+    - PRO: pro-general, pro-research, pro-code, pro-creative (all 8B, Mixtral, 70B)
+    - MAX: all models including 405B
     """
     try:
+        from .logic.models import get_system_prompt, get_groq_model, get_available_models_for_tier
+        
         user_id = request.user_id
         conversation_id = request.conversation_id
         user_message = request.message
-        model_id = request.model  # Get selected model
+        model_id = request.model
+        user_tier = normalize_tier(request.tier)  # Normalize for backward compatibility
         
-        # 1. Resolve / Create User
-        print(generate_telemetry_log("USER_RESOLVE", f"Resolving user external identification '{user_id}'"))
+        # 1. Validate model access for tier
+        available_models = get_available_models_for_tier(user_tier)
+        available_model_ids = [m["id"] for m in available_models]
+        
+        # If requested model not available for tier, use first available
+        if model_id not in available_model_ids:
+            print(generate_telemetry_log(
+                "MODEL_ACCESS_DENIED",
+                f"Model {model_id} not available for tier {user_tier}. Defaulting to {available_model_ids[0] if available_model_ids else 'free-base'}"
+            ))
+            model_id = available_model_ids[0] if available_model_ids else "free-base"
+        
+        # Get actual Groq model name
+        groq_model = get_groq_model(model_id, user_tier)
+        
+        # 2. Resolve / Create User
+        print(generate_telemetry_log("USER_RESOLVE", f"Resolving user external identification '{user_id}' (Tier: {user_tier})"))
         user_record = get_or_create_user(user_id)
         user_db_id = user_record.get("id", user_id)
         
-        # 2. Resolve / Create Conversation Session
+        # 3. Resolve / Create Conversation Session
         if not conversation_id:
             print(generate_telemetry_log("CONV_CREATION", "Initiating a new terminal session..."))
             conv_record = create_conversation(user_db_id, title=f"Session: {user_message[:24]}...")
             conversation_id = conv_record.get("id", "session-new-id")
         
-        # 3. Save User Message
+        # 4. Save User Message
         print(generate_telemetry_log("USER_MSG_STORE", "Persisting user input sequence in Supabase"))
         add_message(conversation_id, "user", user_message)
         
-        # 4. Pull Historical context
+        # 5. Pull Historical context
         print(generate_telemetry_log("PULL_HISTORY", "Analyzing conversational context"))
         raw_history = get_history(conversation_id, limit=10)
         
         # Format history as role/content dict blocks
         messages = []
-        # Use model-specific system prompt
-        system_prompt = get_system_prompt(model_id)
+        # Use model-specific system prompt with tier info
+        system_prompt = get_system_prompt(model_id, user_tier)
         messages.append({
             "role": "system",
             "content": system_prompt
@@ -187,7 +251,7 @@ async def chat_endpoint(request: ChatRequest):
                 "content": h.get("content", "")
             })
             
-        # 5. Think-Before-Tongue logic (Research determination)
+        # 6. Think-Before-Tongue logic (Research determination)
         research_note = ""
         if needs_research(user_message):
             print(generate_telemetry_log("RESEARCH_TRIGGERED", f"Keywords matched. Launching research subprocess for: {user_message}"))
@@ -202,11 +266,14 @@ async def chat_endpoint(request: ChatRequest):
         else:
             print(generate_telemetry_log("THINKING_COMPLETED", "Message processed; semantic search index skipped."))
 
-        # 6. Call Groq + Llama 3.1 8B
-        print(generate_telemetry_log("LLAMA_API_CALL", f"Routing to {model_id} model on Llama 3.1 8B via Groq"))
-        response_text = await call_llama(messages)
+        # 7. Call Groq with tier-based model routing
+        print(generate_telemetry_log(
+            "LLM_API_CALL",
+            f"Routing to {model_id} (Groq model: {groq_model}) for tier {user_tier}"
+        ))
+        response_text = await call_llama(messages, groq_model)
         
-        # 7. Persist AI Response
+        # 8. Persist AI Response
         print(generate_telemetry_log("AI_MSG_STORE", "Persisting generated intelligence block"))
         add_message(conversation_id, "assistant", response_text)
         
@@ -214,6 +281,8 @@ async def chat_endpoint(request: ChatRequest):
             "conversation_id": conversation_id,
             "answer": response_text,
             "model_used": model_id,
+            "groq_model": groq_model,
+            "tier": user_tier,
             "research_triggered": bool(research_note),
             "research_context": research_note or None,
             "status": "COMPLETED"

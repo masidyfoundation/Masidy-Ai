@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
-import { Send, Plus, Mic, Paperclip, X, Volume2, VolumeX, FileCode } from "lucide-react";
+import { Send, Plus, Mic, Paperclip, X, Volume2, VolumeX, FileCode, Lock } from "lucide-react";
 import { Message, MasidyModel } from "../types";
 
 interface InputBarProps {
@@ -9,15 +9,17 @@ interface InputBarProps {
   selectedModel?: string;
   availableModels?: MasidyModel[];
   onModelChange?: (modelId: string) => void;
+  userTier?: string;
 }
 
 export default function InputBar({ 
   onSendMessage, 
   disabled, 
   messages = [], 
-  selectedModel = "masidy-pro",
+  selectedModel = "free-base",
   availableModels = [],
-  onModelChange
+  onModelChange,
+  userTier = "FREE"
 }: InputBarProps) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -192,24 +194,33 @@ export default function InputBar({
         
         {/* Model Selector */}
         {availableModels.length > 0 && (
-          <div className="mb-4 flex items-center gap-2.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Model:</label>
-            <select
-              value={selectedModel}
-              onChange={(e) => {
-                const newModel = e.target.value;
-                if (newModel !== selectedModel) {
-                  onModelChange?.(newModel);
-                }
-              }}
-              className="px-3 py-1.5 text-xs font-semibold border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 cursor-pointer hover:border-slate-400 dark:hover:border-slate-500 transition-all shadow-sm hover:shadow-md"
-            >
-              {availableModels.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.name}
-                </option>
-              ))}
-            </select>
+          <div className="mb-4 flex flex-col gap-2">
+            <div className="flex items-center gap-2.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
+                Model ({userTier})
+              </label>
+              <select
+                value={selectedModel}
+                onChange={(e) => {
+                  const newModel = e.target.value;
+                  if (newModel !== selectedModel) {
+                    onModelChange?.(newModel);
+                  }
+                }}
+                className="px-3 py-1.5 text-xs font-semibold border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 cursor-pointer hover:border-slate-400 dark:hover:border-slate-500 transition-all shadow-sm hover:shadow-md"
+              >
+                {availableModels.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {userTier === "FREE" && (
+              <div className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                <Lock className="w-3 h-3" /> Upgrade your plan to unlock more models
+              </div>
+            )}
           </div>
         )}
         

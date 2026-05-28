@@ -19,6 +19,15 @@ export default function PlansPricing() {
     }
   }, []);
 
+  // Listen for tier updates from other components
+  useEffect(() => {
+    const handleTierUpdate = (e: any) => {
+      setActivePlan(e.detail);
+    };
+    window.addEventListener("masidy_tier_updated", handleTierUpdate);
+    return () => window.removeEventListener("masidy_tier_updated", handleTierUpdate);
+  }, []);
+
   const handleOpenCheckout = (name: string, price: number) => {
     setCheckoutPlan({ name, price });
     setShowCheckout(true);
@@ -74,49 +83,81 @@ export default function PlansPricing() {
 
   const plans = [
     {
-      name: "Free Standard",
-      description: "Ideal for individual creators probing core semantic engines.",
+      name: "FREE",
+      description: "Perfect for trying Masidy with core AI capabilities.",
       price: 0,
       features: [
-        "1,000 requests monthly",
-        "Access to Masidy 1 & Masidy 1.2 models",
-        "Asynchronous scraping pipeline mapping",
-        "Persistent local search database logs"
+        "8 requests per minute",
+        "1 AI model included",
+        "Basic research capabilities",
+        "Community support",
+        "Local conversation history"
       ],
       icon: Heart,
       color: "border-neutral-200 text-neutral-800",
-      buttonText: "Natively Active"
+      buttonText: "Currently Active"
     },
     {
-      name: "Masidy Pro",
-      description: "Full-stack analytic suite for researchers demanding high throughput.",
+      name: "STARTER",
+      description: "$5/month - Unlock research and analysis power.",
+      price: billingPeriod === "monthly" ? 5 : 4,
+      features: [
+        "15 requests per minute",
+        "2 AI models included",
+        "Advanced research tools",
+        "Priority support",
+        "Extended history (100 conversations)"
+      ],
+      icon: Star,
+      color: "border-blue-200 text-blue-900",
+      buttonText: "Upgrade to Starter"
+    },
+    {
+      name: "BASE",
+      description: "$20/month - Professional-grade AI for all tasks.",
       price: billingPeriod === "monthly" ? 20 : 16,
       features: [
-        "Unlimited generation queries",
-        "Instant prioritized queue response",
-        "Exhaustive Deep Research automated crawling",
-        "Full-resolution Visual diff models exports",
-        "Secrets key overriding keys configurations"
+        "25 requests per minute",
+        "3 AI models included",
+        "Expert coding assistance",
+        "Priority queue access",
+        "Unlimited conversation history"
       ],
       icon: Rocket,
-      color: "border-indigo-220 text-indigo-900 border-2 shadow-sm bg-indigo-50/10",
+      color: "border-indigo-200 text-indigo-900 border-2 shadow-sm bg-indigo-50/10",
       bonus: true,
+      buttonText: "Upgrade to Base"
+    },
+    {
+      name: "PRO",
+      description: "$50/month - Elite AI with maximum capability.",
+      price: billingPeriod === "monthly" ? 50 : 40,
+      features: [
+        "50 requests per minute",
+        "4 AI models included",
+        "Creative AI specialist",
+        "Dedicated priority support",
+        "Advanced analytics dashboard"
+      ],
+      icon: Rocket,
+      color: "border-purple-200 text-purple-900 border-2",
       buttonText: "Upgrade to Pro"
     },
     {
-      name: "Landmark Enterprise",
-      description: "Sovereign performance built for high capacity teams.",
-      price: billingPeriod === "monthly" ? 89 : 72,
+      name: "MAX",
+      description: "$100/month - Ultimate power with maximum capability.",
+      price: billingPeriod === "monthly" ? 100 : 80,
       features: [
-        "Dedicated cloud sandboxing instances",
-        "Custom base model fine-tuning arrays",
-        "Zero-latency cluster mirror pathways",
-        "Custom compliance reports & security logs",
-        "Unlimited custom system instruction presets"
+        "999 requests per minute (unlimited)",
+        "All 5 AI models included",
+        "Expert general + research + code + creative",
+        "24/7 VIP support",
+        "Custom model configurations",
+        "Reserved capacity guarantee"
       ],
       icon: Landmark,
-      color: "border-neutral-850 text-neutral-900 border-2",
-      buttonText: "Deploy Enterprise"
+      color: "border-amber-200 text-amber-900 border-2",
+      buttonText: "Upgrade to Max"
     }
   ];
 
@@ -208,6 +249,8 @@ export default function PlansPricing() {
                     <span className="text-3xl font-extrabold text-neutral-900 dark:text-white font-sans">${plan.price}</span>
                     <span className="text-xs text-zinc-400 dark:text-zinc-500 font-medium">/ per user/mo</span>
                   </div>
+
+
 
                   {/* Feature lists */}
                   <div className="pt-2 border-t border-neutral-100 dark:border-zinc-800 space-y-2.5">

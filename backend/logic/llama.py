@@ -3,14 +3,34 @@ import httpx
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-async def call_llama(messages: list[dict]) -> str:
+async def call_llama(messages: list[dict], groq_model: str = "llama-3.1-8b-instant") -> str:
     """
-    Asynchronously queries Llama 3.1 8b on Groq.
-    Expects custom system/user/assistant message formatting tags.
+    Asynchronously queries Groq LLM with tier-based model routing.
+    Supports multiple Groq models based on user tier.
+    
+    Available models:
+    - llama3-8b-8192: Free tier base model
+    - mixtral-8x7b-32768: Starter/Base research tier
+    - llama3-70b-8192: Base/Pro code model
+    - gemma2-9b-it: Pro creative tier
+    - llama3-1-405b-reasoning: MAX tier premium (when available)
+    
     Falls back to demo response if key is not configured.
     """
     # Get API key dynamically from environment
     groq_api_key = os.getenv("GROQ_API_KEY")
+    
+    # Map Masidy model names to actual Groq API model names
+    groq_model_mapping = {
+        "llama-3.1-8b": "llama-3.1-8b-instant",
+        "llama-3.1-70b": "llama-3.1-70b-versatile",
+        "mixtral-8x22b": "mixtral-8x7b-32768",
+        "gemma-2-27b": "gemma2-9b-it",
+        "llama-3.1-405b": "llama-3.1-405b-reasoning"
+    }
+    
+    # Resolve model name
+    resolved_model = groq_model_mapping.get(groq_model, groq_model or "llama-3.1-8b-instant")
     
     # Check if we have a valid API key
     if not groq_api_key or "placeholder" in groq_api_key.lower():
@@ -19,7 +39,7 @@ async def call_llama(messages: list[dict]) -> str:
         return (
             f"[MASIDY DEMO MODE - Groq API not configured]\n\n"
             f"Your message: {user_message}\n\n"
-            f"In production, this would be processed by Llama 3.1 8B on Groq.\n"
+            f"In production, this would be processed by {resolved_model} on Groq.\n"
             f"To enable real responses:\n"
             f"1. Get a Groq API key at https://console.groq.com/\n"
             f"2. Add your key to backend/.env as GROQ_API_KEY=gsk_...\n"
@@ -32,7 +52,7 @@ async def call_llama(messages: list[dict]) -> str:
     }
     
     payload = {
-        "model": "llama-3.1-8b-instant",
+        "model": resolved_model,
         "messages": messages,
         "temperature": 0.5,
         "max_tokens": 1024
@@ -45,5 +65,5 @@ async def call_llama(messages: list[dict]) -> str:
             res_json = response.json()
             return res_json["choices"][0]["message"]["content"]
         except Exception as e:
-            print(f"[Error calling Llama on Groq]: {e}")
-            raise RuntimeError(f"Failed to query Groq Llama API: {str(e)}")
+            print(f"[Error calling Groq API with model {resolved_model}]: {e}")
+            raise RuntimeError(f"Failed to query Groq API: {str(e)}")

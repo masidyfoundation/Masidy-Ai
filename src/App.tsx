@@ -41,7 +41,7 @@ export default function App() {
   // Loaded user profile preferences
   const [username, setUsername] = useState("Masidy User");
   const [avatarColor, setAvatarColor] = useState("indigo");
-  const [activePlan, setActivePlan] = useState("Free Standard");
+  const [activePlan, setActivePlan] = useState("FREE");
 
   // Sidebar states for dynamic adjustments & complete workspace full screening
   const [sidebarWidth, setSidebarWidth] = useState(() => {
@@ -116,16 +116,17 @@ export default function App() {
     }
   }, []);
 
-  // Load available Masidy models (with caching)
+  // Load available Masidy models (with caching) - Fetch tier-specific models
   useEffect(() => {
     const loadModels = async () => {
       // Check for cached models (cache for 1 hour)
       const cachedModels = localStorage.getItem("masidy_models_cache");
+      const cachedTier = localStorage.getItem("masidy_models_cache_tier");
       const cacheTimestamp = localStorage.getItem("masidy_models_cache_time");
       const now = Date.now();
       const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 
-      if (cachedModels && cacheTimestamp) {
+      if (cachedModels && cacheTimestamp && cachedTier === activePlan) {
         const cacheAge = now - parseInt(cacheTimestamp, 10);
         if (cacheAge < CACHE_DURATION) {
           try {
@@ -138,15 +139,27 @@ export default function App() {
         }
       }
 
-      // Fetch fresh models
+      // Fetch fresh models for current tier
       try {
-        const res = await fetch("http://localhost:8000/models");
+        // Convert tier names for backend compatibility
+        const tierParam = activePlan.toUpperCase().replace(/[^A-Z]/g, '');
+        const tierMap: { [key: string]: string } = {
+          "FREE": "FREE",
+          "STARTER": "STARTER",
+          "BASE": "BASE",
+          "PRO": "PRO",
+          "MAX": "MAX"
+        };
+        const mappedTier = tierMap[activePlan] || "FREE";
+        
+        const res = await fetch(`http://localhost:8000/models?tier=${mappedTier}`);
         const data = await res.json();
         if (data.models) {
           setAvailableModels(data.models);
-          // Cache the result
+          // Cache the result with tier info
           localStorage.setItem("masidy_models_cache", JSON.stringify(data.models));
           localStorage.setItem("masidy_models_cache_time", now.toString());
+          localStorage.setItem("masidy_models_cache_tier", activePlan);
         }
       } catch (err) {
         console.error("Failed to load models:", err);
@@ -155,7 +168,7 @@ export default function App() {
     };
 
     loadModels();
-  }, []);
+  }, [activePlan]);
 
   // Persist selected model to localStorage
   useEffect(() => {
@@ -352,6 +365,7 @@ export default function App() {
         conversation_id: activeConvId,
         message: finalizedPayloadMessage,
         model: selectedModel,
+        tier: activePlan,  // Add user's tier for model access control
         credentials: savedKeys
       };
 
@@ -555,6 +569,7 @@ export default function App() {
                 selectedModel={selectedModel}
                 availableModels={availableModels}
                 onModelChange={setSelectedModel}
+                userTier={activePlan}
               />
             </>
           )}
