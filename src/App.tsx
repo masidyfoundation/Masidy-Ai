@@ -36,13 +36,18 @@ export default function App() {
   // Auth state
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // userId starts as anon, gets replaced by Supabase UUID on session load
   const [userId, setUserId] = useState<string>(() => {
+    // If we have a cached Supabase user ID, use it immediately
+    const cachedSupabaseId = localStorage.getItem("masidy_supabase_uid");
+    if (cachedSupabaseId) return cachedSupabaseId;
     const stored = localStorage.getItem("masidy_anon_id");
     if (stored) return stored;
     const id = `anon-${Math.random().toString(36).substring(2, 12)}`;
     localStorage.setItem("masidy_anon_id", id);
     return id;
   });
+  const [authReady, setAuthReady] = useState(false);
 
   // Loaded user profile preferences — declared BEFORE models so activePlan is available
   const [username, setUsername] = useState("Masidy User");
@@ -181,7 +186,7 @@ export default function App() {
 
   // Supabase auth session listener
   useEffect(() => {
-    // Check for existing session on mount
+    // Check for existing session on mount — set authReady when done
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         const user = session.user;
@@ -194,10 +199,11 @@ export default function App() {
         setUserId(user.id);
         setIsAuthenticated(true);
         localStorage.setItem("masidy_username", displayName);
+        localStorage.setItem("masidy_supabase_uid", user.id);
       }
+      setAuthReady(true); // auth check complete — now safe to fetch conversations
     });
 
-    // Listen for auth state changes (sign in, sign out, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         const user = session.user;
@@ -210,10 +216,11 @@ export default function App() {
         setUserId(user.id);
         setIsAuthenticated(true);
         localStorage.setItem("masidy_username", displayName);
+        localStorage.setItem("masidy_supabase_uid", user.id);
         setShowAuthModal(false);
       } else {
         setIsAuthenticated(false);
-        // Restore anon ID on sign out
+        localStorage.removeItem("masidy_supabase_uid");
         const anonId = localStorage.getItem("masidy_anon_id") || `anon-${Math.random().toString(36).substring(2, 12)}`;
         setUserId(anonId);
         localStorage.setItem("masidy_anon_id", anonId);
@@ -276,8 +283,8 @@ export default function App() {
   };
 
   useEffect(() => {
-    fetchConversations();
-  }, [userId]);
+    if (authReady) fetchConversations();
+  }, [userId, authReady]);
 
   // Fetch messages every time the active conversation ID shifts
   useEffect(() => {
