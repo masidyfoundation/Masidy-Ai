@@ -353,17 +353,15 @@ export default function Sidebar({
 
         {/* User Account Capsule Details */}
         <div className="pt-2 border-t border-neutral-200 dark:border-zinc-800 mt-2 flex items-center space-x-3">
-          
-          {/* Avatar sphere */}
           <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 select-none border border-black/10 dark:border-white/10 uppercase shadow-xs ${getAvatarBg()}`}>
             {username ? username.charAt(0) : "U"}
           </div>
-
           <div className="min-w-0 flex-1 leading-none text-left">
             <h4 className="text-xs font-bold text-neutral-800 dark:text-zinc-200 truncate" title={username}>{username}</h4>
-            <span className="text-[9px] text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wide">SECURE INDIVIDUAL</span>
+            <span className={`text-[9px] font-bold uppercase tracking-wide ${isAuthenticated ? "text-emerald-500" : "text-zinc-500 dark:text-zinc-400"}`}>
+              {isAuthenticated ? "● SIGNED IN" : "NOT SIGNED IN"}
+            </span>
           </div>
-
         </div>
 
       </div>

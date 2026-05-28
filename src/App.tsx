@@ -37,7 +37,6 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userId, setUserId] = useState<string>(() => {
-    // Use a stable anonymous ID per browser until they sign in
     const stored = localStorage.getItem("masidy_anon_id");
     if (stored) return stored;
     const id = `anon-${Math.random().toString(36).substring(2, 12)}`;
@@ -45,32 +44,31 @@ export default function App() {
     return id;
   });
 
-  // Masidy Model selection — exactly 5 models, one per tier
-  const FIVE_MODELS: MasidyModel[] = [
-    { id: "free-base",    name: "Free",    description: "Llama 3.1 8B — core assistant",       tier: "FREE",    locked: false },
-    { id: "starter-base", name: "Starter", description: "Llama 3.1 8B — enhanced assistant",   tier: "STARTER", locked: true },
-    { id: "base-general", name: "Base",    description: "Llama 3.3 70B — advanced reasoning",  tier: "BASE",    locked: true },
-    { id: "pro-general",  name: "Pro",     description: "Llama 3.3 70B — professional expert", tier: "PRO",     locked: true },
-    { id: "max-general",  name: "Max",     description: "Llama 3.1 405B — maximum power",      tier: "MAX",     locked: true },
-  ];
-
-  const [selectedModel, setSelectedModel] = useState(() => {
-    const saved = localStorage.getItem("masidy_selected_model");
-    return saved || "free-base";
-  });
-
-  // Compute available models based on current plan — unlock up to user's tier
-  const tierOrder = ["FREE", "STARTER", "BASE", "PRO", "MAX"];
-  const userTierIndex = tierOrder.indexOf(activePlan);
-  const availableModels: MasidyModel[] = FIVE_MODELS.map(m => ({
-    ...m,
-    locked: tierOrder.indexOf(m.tier || "FREE") > userTierIndex
-  }));
-
-  // Loaded user profile preferences
+  // Loaded user profile preferences — declared BEFORE models so activePlan is available
   const [username, setUsername] = useState("Masidy User");
   const [avatarColor, setAvatarColor] = useState("indigo");
-  const [activePlan, setActivePlan] = useState("FREE");
+  const [activePlan, setActivePlan] = useState(() => {
+    return localStorage.getItem("masidy_active_tier") || "FREE";
+  });
+
+  // Exactly 5 models, one per tier — computed from activePlan
+  const ALL_MODELS: MasidyModel[] = [
+    { id: "free-base",    name: "Free",    description: "Llama 3.1 8B — core assistant",       tier: "FREE"    },
+    { id: "starter-base", name: "Starter", description: "Llama 3.1 8B — enhanced assistant",   tier: "STARTER" },
+    { id: "base-general", name: "Base",    description: "Llama 3.3 70B — advanced reasoning",  tier: "BASE"    },
+    { id: "pro-general",  name: "Pro",     description: "Llama 3.3 70B — professional expert", tier: "PRO"     },
+    { id: "max-general",  name: "Max",     description: "Llama 3.1 405B — maximum power",      tier: "MAX"     },
+  ];
+  const TIER_ORDER = ["FREE", "STARTER", "BASE", "PRO", "MAX"];
+  const userTierIndex = TIER_ORDER.indexOf(activePlan);
+  const availableModels: MasidyModel[] = ALL_MODELS.map(m => ({
+    ...m,
+    locked: TIER_ORDER.indexOf(m.tier || "FREE") > userTierIndex
+  }));
+
+  const [selectedModel, setSelectedModel] = useState(() => {
+    return localStorage.getItem("masidy_selected_model") || "free-base";
+  });
 
   // Sidebar states for dynamic adjustments & complete workspace full screening
   const [sidebarWidth, setSidebarWidth] = useState(() => {
@@ -121,9 +119,6 @@ export default function App() {
 
     const localAvatar = localStorage.getItem("masidy_avatar");
     if (localAvatar) setAvatarColor(localAvatar);
-
-    const localPlan = localStorage.getItem("masidy_active_tier");
-    if (localPlan) setActivePlan(localPlan);
 
     const localTheme = localStorage.getItem("masidy_theme") as "light" | "dark";
     if (localTheme) {
