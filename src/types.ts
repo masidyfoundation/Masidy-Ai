@@ -31,6 +31,8 @@ export interface MasidyModel {
   id: string;
   name: string;
   description: string;
+  tier?: string;
+  locked?: boolean;
 }
 
 export interface ImageGeneration {

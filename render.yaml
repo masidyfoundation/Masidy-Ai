@@ -29,7 +29,7 @@ services:
     startCommand: node dist/server.cjs
     envVars:
       - key: BACKEND_URL
-        value: https://masidy-backend.onrender.com
+        value: https://masidy-backend-za1t.onrender.com
       - key: NODE_ENV
         value: production
       - key: SERVER_PORT

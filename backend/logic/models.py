@@ -283,5 +283,21 @@ def list_models() -> list:
     ]
 
 def list_models_by_tier(tier: str) -> list:
-    """List all models available for a specific tier"""
-    return get_available_models_for_tier(tier)
+    """List ALL models, marking which ones are locked for the given tier"""
+    tier_order = ["FREE", "STARTER", "BASE", "PRO", "MAX"]
+    user_tier_index = tier_order.index(tier) if tier in tier_order else 0
+    
+    result = []
+    for model_id, config in MASIDY_MODELS.items():
+        model_tier = config.get("tier", "FREE")
+        model_tier_index = tier_order.index(model_tier) if model_tier in tier_order else 0
+        is_locked = model_tier_index > user_tier_index
+        result.append({
+            "id": model_id,
+            "name": config["name"],
+            "description": config["description"],
+            "tier": model_tier,
+            "locked": is_locked,
+            "groq_model": config.get("groq_model", "llama-3.1-8b")
+        })
+    return result

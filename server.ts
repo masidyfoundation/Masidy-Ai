@@ -338,12 +338,18 @@ async function startServer() {
   // API 2: /api/conversations (to list sessions in terminal side rail)
   app.get("/api/conversations", (req, res) => {
     const db = loadDatabase();
-    // Deduplicate by ID (keep only latest if duplicates exist)
+    const userId = req.query.user_id as string | undefined;
+    
+    let convs = db.conversations;
+    // Filter by user_id if provided — prevents users seeing each other's chats
+    if (userId) {
+      convs = convs.filter(c => c.user_id === userId);
+    }
+    
+    // Deduplicate by ID
     const seen = new Set<string>();
-    const unique = db.conversations.filter(conv => {
-      if (seen.has(conv.id)) {
-        return false;
-      }
+    const unique = convs.filter(conv => {
+      if (seen.has(conv.id)) return false;
       seen.add(conv.id);
       return true;
     });
@@ -370,7 +376,7 @@ async function startServer() {
 
   // Stripe & Subscription checkout integration endpoint - NEW TIER SYSTEM
   app.post("/api/payment/checkout", async (req, res) => {
-    const { tierName, successUrl, cancelUrl } = req.body;
+    const { tierName, successUrl, cancelUrl, user_id = "anon" } = req.body;
     const db = loadDatabase();
 
     // Map tier names to pricing
@@ -422,7 +428,7 @@ async function startServer() {
           cancel_url: cancelUrl || `${origin}/`,
           metadata: {
             tierName,
-            user_external_id: "admin_user"
+            user_external_id: user_id
           }
         });
 
@@ -439,11 +445,11 @@ async function startServer() {
     }
 
     // Direct sandbox checkout fallback
-    let user = db.users.find(u => u.external_id === "admin_user");
+    let user = db.users.find(u => u.external_id === user_id);
     if (!user) {
       user = {
-        id: "u-admin",
-        external_id: "admin_user",
+        id: `u-${Math.random().toString(36).substring(2, 9)}`,
+        external_id: user_id,
         created_at: new Date().toISOString()
       };
       db.users.push(user);
@@ -643,12 +649,11 @@ async function startServer() {
 
   // System Rate-limiting telemetry status block
   app.get("/api/rate-limit-status", (req, res) => {
+    const userId = (req.query.user_id as string) || "anon";
     const db = loadDatabase();
-    const user = db.users.find(u => u.external_id === "admin_user");
+    const user = db.users.find(u => u.external_id === userId);
     const activeTier = user?.tier || "Free Standard";
-    
-    // Check limit status for admin/local IP
-    const status = checkRateLimit("admin_user_ip", activeTier);
+    const status = checkRateLimit(userId, activeTier);
     res.json({
       tier: activeTier,
       limit: status.limit,

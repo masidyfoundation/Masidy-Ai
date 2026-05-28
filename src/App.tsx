@@ -36,6 +36,14 @@ export default function App() {
   // Auth state
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userId, setUserId] = useState<string>(() => {
+    // Use a stable anonymous ID per browser until they sign in
+    const stored = localStorage.getItem("masidy_anon_id");
+    if (stored) return stored;
+    const id = `anon-${Math.random().toString(36).substring(2, 12)}`;
+    localStorage.setItem("masidy_anon_id", id);
+    return id;
+  });
 
   // Masidy Model selection
   const [selectedModel, setSelectedModel] = useState(() => {
@@ -222,6 +230,7 @@ export default function App() {
           user.email?.split("@")[0] ||
           "Masidy User";
         setUsername(displayName);
+        setUserId(user.id);
         setIsAuthenticated(true);
         localStorage.setItem("masidy_username", displayName);
       }
@@ -237,11 +246,16 @@ export default function App() {
           user.email?.split("@")[0] ||
           "Masidy User";
         setUsername(displayName);
+        setUserId(user.id);
         setIsAuthenticated(true);
         localStorage.setItem("masidy_username", displayName);
         setShowAuthModal(false);
       } else {
         setIsAuthenticated(false);
+        // Restore anon ID on sign out
+        const anonId = localStorage.getItem("masidy_anon_id") || `anon-${Math.random().toString(36).substring(2, 12)}`;
+        setUserId(anonId);
+        localStorage.setItem("masidy_anon_id", anonId);
       }
     });
 
@@ -268,7 +282,7 @@ export default function App() {
     }, 1000);
 
     try {
-      const resp = await fetch("/api/conversations");
+      const resp = await fetch(`/api/conversations?user_id=${encodeURIComponent(userId)}`);
       if (resp.ok) {
         let data = await resp.json();
         
@@ -302,7 +316,7 @@ export default function App() {
 
   useEffect(() => {
     fetchConversations();
-  }, []);
+  }, [userId]);
 
   // Fetch messages every time the active conversation ID shifts
   useEffect(() => {
@@ -405,11 +419,11 @@ export default function App() {
          : rawMessage;
 
       const bodyPayload = {
-        user_id: "admin_user",
+        user_id: userId,
         conversation_id: activeConvId,
         message: finalizedPayloadMessage,
         model: selectedModel,
-        tier: activePlan,  // Add user's tier for model access control
+        tier: activePlan,
         credentials: savedKeys
       };
 
