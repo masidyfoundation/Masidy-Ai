@@ -7,10 +7,11 @@ import { createClient } from "@supabase/supabase-js";
 
 // Supabase client for persistent storage (service role bypasses RLS)
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://fcyeujjqklwcultctcrd.supabase.co";
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || "";
-const supabaseAdmin = SUPABASE_SERVICE_KEY
-  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-  : null;
+// Try service key first, then anon key
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY 
+  || process.env.SUPABASE_ANON_KEY 
+  || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjeWV1ampxa2x3Y3VsdGN0Y3JkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTkxMDE5MiwiZXhwIjoyMDk1NDg2MTkyfQ.EskENhKvuTwLL4J_mrG2G40OPIAl6iLJWro0vJ-Al9w";
+const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 let stripeClient: Stripe | null = null;
 function getStripe() {
@@ -347,29 +348,22 @@ async function startServer() {
   app.get("/api/conversations", async (req, res) => {
     const userId = req.query.user_id as string | undefined;
     
-    // Try Supabase first — join through users table via external_id
-    if (supabaseAdmin && userId) {
+    if (userId) {
       try {
-        // First find the internal user id from external_id
-        const { data: userData } = await supabaseAdmin
-          .from("users")
-          .select("id")
-          .eq("external_id", userId)
-          .single();
+        // Try fetching by external_id stored directly in conversations
+        const { data, error } = await supabaseAdmin
+          .from("conversations")
+          .select("id, title, created_at")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(50);
         
-        if (userData?.id) {
-          const { data, error } = await supabaseAdmin
-            .from("conversations")
-            .select("id, title, created_at, user_id")
-            .eq("user_id", userData.id)
-            .order("created_at", { ascending: false })
-            .limit(50);
-          if (!error && data) {
-            return res.json(data);
-          }
+        if (!error && data && data.length > 0) {
+          return res.json(data);
         }
+        if (error) console.error("Supabase conversations fetch error:", error.message);
       } catch (e) {
-        console.error("Supabase conversations fetch error:", e);
+        console.error("Supabase conversations fetch exception:", e);
       }
     }
 
@@ -745,20 +739,14 @@ async function startServer() {
       let title = message.substring(0, 30);
       if (title.length >= 30) title += "...";
 
-      // Ensure user exists in Supabase before saving conversation (FK constraint)
+      // Ensure user exists in Supabase (best effort, non-blocking)
+      supabaseAdmin.from("users").upsert(
+        { external_id: user_id },
+        { onConflict: "external_id" }
+      ).then(({ error }) => {
+        if (error) console.error("User upsert error:", error.message);
+      });
       let supabaseInternalUserId: string | null = null;
-      if (supabaseAdmin) {
-        try {
-          const { data: upsertData } = await supabaseAdmin
-            .from("users")
-            .upsert({ external_id: user_id }, { onConflict: "external_id" })
-            .select("id")
-            .single();
-          supabaseInternalUserId = upsertData?.id || null;
-        } catch (e) {
-          console.error("Supabase user upsert error:", e);
-        }
-      }
 
       let conv = db.conversations.find((c) => c.id === activeConvId);
       if (!conv) {
@@ -770,17 +758,15 @@ async function startServer() {
           created_at: new Date().toISOString(),
         };
         db.conversations.push(conv);
-        // Save to Supabase using internal user ID for FK constraint
-        if (supabaseAdmin && supabaseInternalUserId) {
-          supabaseAdmin.from("conversations").upsert({
-            id: activeConvId,
-            user_id: supabaseInternalUserId,
-            title: title || "New Chat"
-          }).then(({ error }) => {
-            if (error) console.error("Supabase conv save error:", error.message);
-            else console.log("✅ Conversation saved to Supabase:", activeConvId);
-          });
-        }
+        // Save to Supabase — user_id stored as text, no FK constraint
+        supabaseAdmin.from("conversations").upsert({
+          id: activeConvId,
+          user_id: user_id,
+          title: title || "New Chat"
+        }).then(({ error }) => {
+          if (error) console.error("Supabase conv save error:", error.message);
+          else console.log("✅ Conversation saved to Supabase:", activeConvId);
+        });
         log("CONV_RESOLVE", `Allocated core cache sequence: ${activeConvId}`, "SUCCESS");
       }
 

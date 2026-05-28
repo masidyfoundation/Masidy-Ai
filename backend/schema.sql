@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- 2. CONVERSATIONS TABLE
 CREATE TABLE IF NOT EXISTS conversations (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+    user_id TEXT NOT NULL,
     title VARCHAR(255) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()) NOT NULL
 );
@@ -77,9 +77,7 @@ CREATE POLICY "Service role bypass conversations" ON conversations
 
 CREATE POLICY "Authenticated users manage own conversations" ON conversations
     FOR ALL TO authenticated
-    USING (user_id IN (
-        SELECT id FROM users WHERE id = auth.uid() OR external_id = auth.uid()::text
-    ));
+    USING (user_id = auth.uid()::text);
 
 -- MESSAGES: service role full access + authenticated user own rows
 CREATE POLICY "Service role bypass messages" ON messages
