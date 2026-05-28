@@ -99,31 +99,31 @@ export default function StatusBar({
              <span className="text-[9px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider px-3 block mb-2">AI Models</span>
              
              {availableModels.length === 0 ? (
-               <div className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
-                 Loading models...
-               </div>
+               <div className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">Loading...</div>
              ) : (
                availableModels.map((model) => (
-                 <button 
+                 <button
                    key={model.id}
-                   onClick={() => { 
+                   onClick={() => {
                      if (model.locked) return;
-                     setModelDropdown(false); 
+                     setModelDropdown(false);
                      onModelChange?.(model.id);
                    }}
                    className={`w-full text-left py-2 px-3 rounded-lg text-xs font-semibold flex justify-between items-center transition-all ${
                      model.locked
-                       ? "opacity-50 cursor-not-allowed text-slate-400 dark:text-zinc-500"
+                       ? "opacity-40 cursor-not-allowed"
                        : "hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer"
                    } ${selectedModel === model.id ? "bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700/50" : ""}`}
                  >
-                    <div className="flex flex-col">
-                      <span className="text-slate-900 dark:text-zinc-100">{model.locked ? `🔒 ${model.name}` : model.name}</span>
-                      <span className="text-[8px] text-slate-500 dark:text-slate-400 font-normal">{model.description} {model.tier && model.tier !== "FREE" ? `· ${model.tier}` : ""}</span>
-                    </div>
-                    {selectedModel === model.id && (
-                      <span className="px-2 py-1 bg-indigo-200 dark:bg-indigo-900/60 text-[8px] font-bold text-indigo-700 dark:text-indigo-300 rounded uppercase tracking-wide">Active</span>
-                    )}
+                   <div className="flex flex-col">
+                     <span className="text-slate-900 dark:text-zinc-100">
+                       {model.locked ? `🔒 ${model.name}` : model.name}
+                     </span>
+                     <span className="text-[8px] text-slate-500 dark:text-slate-400 font-normal">{model.description}</span>
+                   </div>
+                   {selectedModel === model.id && (
+                     <span className="px-2 py-1 bg-indigo-200 dark:bg-indigo-900/60 text-[8px] font-bold text-indigo-700 dark:text-indigo-300 rounded uppercase">Active</span>
+                   )}
                  </button>
                ))
              )}

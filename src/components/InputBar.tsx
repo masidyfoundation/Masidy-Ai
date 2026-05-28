@@ -192,34 +192,27 @@ export default function InputBar({
     <div className="bg-gradient-to-b from-white to-neutral-50 dark:from-[#0c0c0e] dark:to-zinc-950 px-4 pb-4 select-none shrink-0 font-sans transition-colors duration-150 border-t border-neutral-200 dark:border-zinc-800/50">
       <div className="max-w-3xl mx-auto w-full">
         
-        {/* Model Selector */}
+        {/* Model Selector — 5 models, locked ones disabled */}
         {availableModels.length > 0 && (
-          <div className="mb-4 flex flex-col gap-2">
-            <div className="flex items-center gap-2.5">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
-                Model ({userTier})
-              </label>
-              <select
-                value={selectedModel}
-                onChange={(e) => {
-                  const newModel = e.target.value;
-                  if (newModel !== selectedModel) {
-                    onModelChange?.(newModel);
-                  }
-                }}
-                className="px-3 py-1.5 text-xs font-semibold border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 cursor-pointer hover:border-slate-400 dark:hover:border-slate-500 transition-all shadow-sm hover:shadow-md"
-              >
-                {availableModels.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="mb-3 flex items-center gap-2.5">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide shrink-0">
+              Model
+            </label>
+            <select
+              value={selectedModel}
+              onChange={(e) => onModelChange?.(e.target.value)}
+              className="px-3 py-1.5 text-xs font-semibold border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-all shadow-sm"
+            >
+              {availableModels.map((model) => (
+                <option key={model.id} value={model.id} disabled={model.locked}>
+                  {model.locked ? `🔒 ${model.name} (${model.tier})` : model.name}
+                </option>
+              ))}
+            </select>
             {userTier === "FREE" && (
-              <div className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                <Lock className="w-3 h-3" /> Upgrade your plan to unlock more models
-              </div>
+              <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                <Lock className="w-3 h-3" /> Upgrade to unlock
+              </span>
             )}
           </div>
         )}

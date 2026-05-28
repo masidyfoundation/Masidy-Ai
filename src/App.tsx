@@ -45,12 +45,27 @@ export default function App() {
     return id;
   });
 
-  // Masidy Model selection
+  // Masidy Model selection — exactly 5 models, one per tier
+  const FIVE_MODELS: MasidyModel[] = [
+    { id: "free-base",    name: "Free",    description: "Llama 3.1 8B — core assistant",       tier: "FREE",    locked: false },
+    { id: "starter-base", name: "Starter", description: "Llama 3.1 8B — enhanced assistant",   tier: "STARTER", locked: true },
+    { id: "base-general", name: "Base",    description: "Llama 3.3 70B — advanced reasoning",  tier: "BASE",    locked: true },
+    { id: "pro-general",  name: "Pro",     description: "Llama 3.3 70B — professional expert", tier: "PRO",     locked: true },
+    { id: "max-general",  name: "Max",     description: "Llama 3.1 405B — maximum power",      tier: "MAX",     locked: true },
+  ];
+
   const [selectedModel, setSelectedModel] = useState(() => {
     const saved = localStorage.getItem("masidy_selected_model");
-    return saved || "masidy-pro";
+    return saved || "free-base";
   });
-  const [availableModels, setAvailableModels] = useState<MasidyModel[]>([]);
+
+  // Compute available models based on current plan — unlock up to user's tier
+  const tierOrder = ["FREE", "STARTER", "BASE", "PRO", "MAX"];
+  const userTierIndex = tierOrder.indexOf(activePlan);
+  const availableModels: MasidyModel[] = FIVE_MODELS.map(m => ({
+    ...m,
+    locked: tierOrder.indexOf(m.tier || "FREE") > userTierIndex
+  }));
 
   // Loaded user profile preferences
   const [username, setUsername] = useState("Masidy User");
@@ -134,41 +149,6 @@ export default function App() {
         .catch(err => console.error("Dynamic subscription checkout validation failed:", err));
     }
   }, []);
-
-  // Load available Masidy models - always fetch fresh, show all with lock indicators
-  useEffect(() => {
-    const loadModels = async () => {
-      try {
-        // Always fetch all models (backend returns all with locked flag per tier)
-        const res = await fetch(`/api/models?tier=${activePlan}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        if (data.models && data.models.length > 0) {
-          setAvailableModels(data.models);
-        }
-      } catch (err) {
-        console.error("Failed to load models:", err);
-        // Hardcoded fallback so selector always has all models
-        setAvailableModels([
-          { id: "free-base", name: "Free Base", description: "Core assistant (8B)", tier: "FREE", locked: false },
-          { id: "starter-base", name: "Starter Base", description: "Enhanced assistant (8B)", tier: "STARTER", locked: activePlan === "FREE" },
-          { id: "starter-research", name: "Starter Research", description: "Research specialist (Mixtral)", tier: "STARTER", locked: activePlan === "FREE" },
-          { id: "base-general", name: "Base General", description: "General expert (8B)", tier: "BASE", locked: !["BASE","PRO","MAX"].includes(activePlan) },
-          { id: "base-research", name: "Base Research", description: "Advanced research (Mixtral)", tier: "BASE", locked: !["BASE","PRO","MAX"].includes(activePlan) },
-          { id: "base-code", name: "Base Code", description: "Expert programmer (70B)", tier: "BASE", locked: !["BASE","PRO","MAX"].includes(activePlan) },
-          { id: "pro-general", name: "Pro General", description: "Expert all domains (70B)", tier: "PRO", locked: !["PRO","MAX"].includes(activePlan) },
-          { id: "pro-research", name: "Pro Research", description: "Expert research (Mixtral)", tier: "PRO", locked: !["PRO","MAX"].includes(activePlan) },
-          { id: "pro-code", name: "Pro Code", description: "Senior engineer (70B)", tier: "PRO", locked: !["PRO","MAX"].includes(activePlan) },
-          { id: "pro-creative", name: "Pro Creative", description: "Creative writing (Mixtral)", tier: "PRO", locked: !["PRO","MAX"].includes(activePlan) },
-          { id: "max-general", name: "Max General", description: "Ultimate expert (405B)", tier: "MAX", locked: activePlan !== "MAX" },
-          { id: "max-code", name: "Max Code", description: "Principal architect (405B)", tier: "MAX", locked: activePlan !== "MAX" },
-          { id: "max-creative", name: "Max Creative", description: "Master creator (Mixtral)", tier: "MAX", locked: activePlan !== "MAX" },
-          { id: "max-premium", name: "Max Premium", description: "Reserved capacity (405B)", tier: "MAX", locked: activePlan !== "MAX" },
-        ]);
-      }
-    };
-    loadModels();
-  }, [activePlan]);
 
   // Persist selected model to localStorage
   useEffect(() => {
@@ -408,7 +388,10 @@ export default function App() {
         user_id: userId,
         conversation_id: activeConvId,
         message: finalizedPayloadMessage,
-        model: selectedModel,
+        // Use selected model only if it's unlocked for the user's tier
+        model: availableModels.find(m => m.id === selectedModel && !m.locked)
+          ? selectedModel
+          : availableModels.filter(m => !m.locked).slice(-1)[0]?.id || "free-base",
         tier: activePlan,
         credentials: savedKeys
       };
