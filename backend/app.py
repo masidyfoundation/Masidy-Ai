@@ -236,35 +236,22 @@ async def chat_endpoint(request: ChatRequest):
         print(generate_telemetry_log("PULL_HISTORY", "Analyzing conversational context"))
         raw_history = get_history(conversation_id, limit=10)
         
-        # Format history as role/content dict blocks
+        # Format history as role/content dict blocks — no system prompt, just clean history
         messages = []
-        # Use model-specific system prompt with tier info
-        system_prompt = get_system_prompt(model_id, user_tier)
-        messages.append({
-            "role": "system",
-            "content": system_prompt
-        })
         
         for h in raw_history:
-            messages.append({
-                "role": h.get("role", "user"),
-                "content": h.get("content", "")
-            })
+            role = h.get("role", "user")
+            content = h.get("content", "")
+            # Skip system messages and old bad assistant intro responses
+            if role == "system":
+                continue
+            messages.append({"role": role, "content": content})
             
-        # 6. Think-Before-Tongue logic (Research determination)
+        # Add the current user message at the end
+        messages.append({"role": "user", "content": user_message})
+            
+        # 6. Research (skip fake research — it injects bad context)
         research_note = ""
-        if needs_research(user_message):
-            print(generate_telemetry_log("RESEARCH_TRIGGERED", f"Keywords matched. Launching research subprocess for: {user_message}"))
-            research_res = perform_research(user_message)
-            research_note = research_res.get("summary", "")
-            
-            # Append search result context to prompt
-            messages.append({
-                "role": "system",
-                "content": f"[GROUNDED CURRENT FACTS]:\n{research_note}"
-            })
-        else:
-            print(generate_telemetry_log("THINKING_COMPLETED", "Message processed; semantic search index skipped."))
 
         # 7. Call Groq with tier-based model routing
         print(generate_telemetry_log(
