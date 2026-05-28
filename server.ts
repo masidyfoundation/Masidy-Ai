@@ -730,11 +730,9 @@ async function startServer() {
 
       // Build model messages stack
       const sysInstruction = 
-        "You are Masidy Core, a centralized dark industrial AI Terminal interface with high analytical precision.\n" +
-        "Output instructions explicitly, following a clean, structured monospace layout.\n" +
-        "Style all metrics, tables, and lists neatly. Use bold technical expressions.\n" +
-        "Be compact. Avoid friendly salutations, pleasantries, emojis, or conversational filler like 'Sure, here is...' or 'Okay, let me...' and output your solutions directly.\n" +
-        (searchContext ? `[ADDITIONAL WEB RESEARCH CONTEXT FOUND]:\n${searchContext}\n` : "");
+        "You are a helpful, knowledgeable AI assistant. Answer questions directly and accurately. " +
+        "Be concise unless detail is needed. Never start your response by introducing yourself. Just answer.\n" +
+        (searchContext ? `[ADDITIONAL WEB RESEARCH CONTEXT]:\n${searchContext}\n` : "");
 
       // Compile message sequence
       const parts: any[] = [{ text: message }];
