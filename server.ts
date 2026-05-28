@@ -19,6 +19,7 @@ function getStripe() {
 }
 
 const PORT = 3000;
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 const DB_FILE = path.join(process.cwd(), "local_db.json");
 
 interface LocalMessage {
@@ -552,7 +553,7 @@ async function startServer() {
       log("MODEL_ROUTE", "Routing computational payload to FastAPI backend (Groq Llama)", "INFO");
       try {
         // Proxy request to FastAPI backend
-        const backendResponse = await fetch("http://localhost:8000/api/chat", {
+        const backendResponse = await fetch(`${BACKEND_URL}/api/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
