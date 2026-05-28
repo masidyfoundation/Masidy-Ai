@@ -68,7 +68,7 @@ async def process_file(file_content: str, filename: str, file_type: str) -> dict
         return {
             "success": False,
             "filename": filename,
-            "error": str(e)
+            "error": "Something went wrong. Please try again."
         }
 
 async def save_file(file_content: str, filename: str) -> str:

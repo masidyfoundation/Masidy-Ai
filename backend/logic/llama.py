@@ -65,5 +65,5 @@ async def call_llama(messages: list[dict], groq_model: str = "llama-3.1-8b-insta
             res_json = response.json()
             return res_json["choices"][0]["message"]["content"]
         except Exception as e:
-            print(f"[Error calling Groq API with model {resolved_model}]: {e}")
-            raise RuntimeError(f"Failed to query Groq API: {str(e)}")
+            print(f"[Error calling AI model]: {e}")
+            raise RuntimeError("The AI model is temporarily unavailable. Please try again.")

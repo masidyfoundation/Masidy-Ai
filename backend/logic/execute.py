@@ -37,7 +37,7 @@ async def execute_python(code: str) -> dict:
         if keyword in code:
             return {
                 "success": False,
-                "error": f"Not allowed: {keyword}",
+                "error": "This code contains restricted operations.",
                 "language": "python"
             }
     
@@ -67,13 +67,13 @@ async def execute_python(code: str) -> dict:
     except subprocess.TimeoutExpired:
         return {
             "success": False,
-            "error": "Execution timeout (>5 seconds)",
+            "error": "Execution timed out.",
             "language": "python"
         }
     except Exception as e:
         return {
             "success": False,
-            "error": str(e),
+            "error": "Execution failed. Please try again.",
             "language": "python"
         }
 
@@ -94,7 +94,7 @@ async def execute_javascript(code: str) -> dict:
         if keyword in code:
             return {
                 "success": False,
-                "error": f"Not allowed: {keyword}",
+                "error": "This code contains restricted operations.",
                 "language": "javascript"
             }
     
@@ -122,6 +122,6 @@ async def execute_javascript(code: str) -> dict:
     except Exception as e:
         return {
             "success": False,
-            "error": str(e),
+            "error": "Execution failed. Please try again.",
             "language": "javascript"
         }

@@ -121,7 +121,7 @@ async def generate_image_endpoint(request: ImageRequest):
         result = await generate_image(request.prompt)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Image generation is temporarily unavailable. Please try again.")
 
 # ========== WEB RESEARCH ==========
 @app.post("/search")
@@ -131,7 +131,7 @@ async def search_endpoint(request: SearchRequest):
         result = await deep_research(request.query)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Search is temporarily unavailable. Please try again.")
 
 # ========== FILE UPLOAD & ANALYSIS ==========
 @app.post("/analyze-file")
@@ -141,7 +141,7 @@ async def analyze_file_endpoint(request: FileAnalysisRequest):
         result = await process_file(request.content, request.filename, request.file_type)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"File analysis failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="File analysis is temporarily unavailable. Please try again.")
 
 # ========== CODE EXECUTION ==========
 @app.post("/execute-code")
@@ -157,7 +157,7 @@ async def execute_code_endpoint(request: CodeExecutionRequest):
         
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Code execution failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Code execution is temporarily unavailable. Please try again.")
 
 # Tier normalization for backward compatibility with Supabase
 def normalize_tier(tier: str = None) -> str:
