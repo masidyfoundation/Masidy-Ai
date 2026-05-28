@@ -1,6 +1,8 @@
 import React, { useRef, useState, useEffect } from "react";
-import { Send, Plus, Mic, Paperclip, X, Volume2, VolumeX, FileCode, Lock } from "lucide-react";
+import { Send, Plus, Mic, X, VolumeX, FileCode, Lock } from "lucide-react";
 import { Message, MasidyModel } from "../types";
+import TermsPage from "./TermsPage";
+import PrivacyPage from "./PrivacyPage";
 
 interface InputBarProps {
   onSendMessage: (msg: string) => void;
@@ -30,6 +32,8 @@ export default function InputBar({
   const [attachedFile, setAttachedFile] = useState<{ name: string; size: string; content?: string } | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
   const recognitionRef = useRef<any>(null);
 
   // Auto focus input on load
@@ -105,8 +109,8 @@ export default function InputBar({
     fileInputRef.current?.click();
   };
 
-  // Real voice speech detection
-  const handleToggleListen = () => {
+  // Voice input — robust cross-browser implementation
+  const handleToggleListen = async () => {
     if (isListening) {
       recognitionRef.current?.stop();
       setIsListening(false);
@@ -115,7 +119,15 @@ export default function InputBar({
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("Vocal Speech recognition is not fully supported in this web browser sandbox. Check Chrome/Safari compatibility.");
+      alert("Voice input is not supported in this browser. Try Chrome or Safari.");
+      return;
+    }
+
+    // Request microphone permission explicitly first
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+      alert("Microphone access denied. Please allow microphone access in your browser settings and try again.");
       return;
     }
 
@@ -123,33 +135,35 @@ export default function InputBar({
       const rec = new SpeechRecognition();
       rec.continuous = false;
       rec.interimResults = false;
-      rec.lang = "en-US";
-      
-      rec.onstart = () => {
-        setIsListening(true);
-      };
-      
+      rec.lang = navigator.language || "en-US";
+      rec.maxAlternatives = 1;
+
+      rec.onstart = () => setIsListening(true);
+
       rec.onresult = (event: any) => {
-        const textTranscript = event.results[0][0].transcript;
-        if (textTranscript) {
-          setValue(prev => prev ? prev + " " + textTranscript : textTranscript);
+        const transcript = event.results[0]?.[0]?.transcript;
+        if (transcript) {
+          setValue(prev => prev ? `${prev} ${transcript}` : transcript);
         }
         setIsListening(false);
       };
 
       rec.onerror = (err: any) => {
-        console.error("Speech transcription error:", err);
+        console.error("Speech recognition error:", err.error);
+        if (err.error === "not-allowed") {
+          alert("Microphone access denied. Please allow microphone access and try again.");
+        } else if (err.error === "no-speech") {
+          // Silent — user just didn't speak
+        }
         setIsListening(false);
       };
 
-      rec.onend = () => {
-        setIsListening(false);
-      };
+      rec.onend = () => setIsListening(false);
 
       recognitionRef.current = rec;
       rec.start();
     } catch (err) {
-      console.error(err);
+      console.error("Speech recognition start error:", err);
       setIsListening(false);
     }
   };
@@ -324,15 +338,31 @@ export default function InputBar({
  
         </form>
  
-        {/* Footer Disclaimer exactly matching screenshot copy */}
+        {/* Footer links */}
         <p className="text-[11px] text-[#8e8e8e] dark:text-zinc-550 text-center mt-2 font-normal leading-normal">
           By chatting with Masidy, an AI workspace assistant, you agree to our{" "}
-          <a href="#" className="underline hover:text-zinc-650 dark:hover:text-zinc-400" onClick={(e) => { e.preventDefault(); alert("Masidy standard license and terms of service guidelines."); }}>Terms of Service</a>{" "}
+          <button
+            type="button"
+            onClick={() => setShowTerms(true)}
+            className="underline hover:text-zinc-650 dark:hover:text-zinc-400 cursor-pointer"
+          >
+            Terms of Service
+          </button>{" "}
           and confirm that you have read the custom{" "}
-          <a href="#" className="underline hover:text-zinc-605 dark:hover:text-zinc-400" onClick={(e) => { e.preventDefault(); alert("Masidy user data privacy policies."); }}>Privacy Agreement</a>.
+          <button
+            type="button"
+            onClick={() => setShowPrivacy(true)}
+            className="underline hover:text-zinc-605 dark:hover:text-zinc-400 cursor-pointer"
+          >
+            Privacy Agreement
+          </button>.
         </p>
- 
+
       </div>
+
+      {/* Modals */}
+      {showTerms && <TermsPage onClose={() => setShowTerms(false)} />}
+      {showPrivacy && <PrivacyPage onClose={() => setShowPrivacy(false)} />}
     </div>
   );
 }
