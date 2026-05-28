@@ -66,7 +66,7 @@ def get_or_create_user(external_id: str) -> dict:
         if user["external_id"] == external_id:
             return user
     new_user = {
-        "id": f"u-{uuid.uuid4().hex[:8]}",
+        "id": str(uuid.uuid4()),
         "external_id": external_id,
         "created_at": datetime.utcnow().isoformat() + "Z",
         "tier": "Free Standard"
@@ -79,17 +79,23 @@ def get_or_create_user(external_id: str) -> dict:
 def create_conversation(user_id: str, title: str) -> dict:
     """Creates a new conversation session. Uses Supabase with local fallback."""
     client = get_supabase()
+    # Always use a proper UUID for conversation IDs so Supabase accepts them
+    conv_id = str(uuid.uuid4())
 
     if client:
         try:
-            new_conv = client.table("conversations").insert({"user_id": user_id, "title": title}).execute()
-            return new_conv.data[0] if new_conv.data else {"id": str(uuid.uuid4()), "user_id": user_id, "title": title}
+            new_conv = client.table("conversations").insert({
+                "id": conv_id,
+                "user_id": user_id,
+                "title": title
+            }).execute()
+            return new_conv.data[0] if new_conv.data else {"id": conv_id, "user_id": user_id, "title": title}
         except Exception as e:
             print(f"[Warning] Supabase error in create_conversation: {e}. Using local fallback.")
 
     db = _load_local_db()
     new_conv = {
-        "id": f"conv-{uuid.uuid4().hex[:8]}",
+        "id": conv_id,
         "user_id": user_id,
         "title": title,
         "created_at": datetime.utcnow().isoformat() + "Z"
@@ -121,7 +127,7 @@ def add_message(conversation_id: str, role: str, content: str) -> dict:
 
     db = _load_local_db()
     new_msg = {
-        "id": f"msg-{uuid.uuid4().hex[:8]}",
+        "id": str(uuid.uuid4()),
         "conversation_id": conversation_id,
         "role": role,
         "content": content,

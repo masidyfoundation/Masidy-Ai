@@ -9,13 +9,13 @@ TIER_MODELS = {
     "MAX": ["max-general", "max-research", "max-code", "max-creative", "max-premium"]
 }
 
-# Real Groq LLM Models
+# Real Groq LLM Models - current API model IDs as of 2026
 GROQ_MODELS = {
-    "llama-3.1-8b": "llama3-8b-8192",
-    "llama-3.1-70b": "llama3-70b-8192",
-    "mixtral-8x22b": "mixtral-8x7b-32768",
-    "gemma-2-27b": "gemma2-9b-it",
-    "llama-3.1-405b": "llama3-1-405b-reasoning"
+    "llama-3.1-8b":   "llama-3.1-8b-instant",
+    "llama-3.1-70b":  "llama-3.1-70b-versatile",
+    "mixtral-8x22b":  "mixtral-8x7b-32768",
+    "gemma-2-27b":    "gemma2-9b-it",
+    "llama-3.1-405b": "llama-3.1-405b-reasoning"
 }
 
 # Model Definitions with Actual Groq LLM Backing
