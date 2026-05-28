@@ -3,6 +3,14 @@ import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import Stripe from "stripe";
+import { createClient } from "@supabase/supabase-js";
+
+// Supabase client for persistent storage (service role bypasses RLS)
+const SUPABASE_URL = process.env.SUPABASE_URL || "https://fcyeujjqklwcultctcrd.supabase.co";
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || "";
+const supabaseAdmin = SUPABASE_SERVICE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+  : null;
 
 let stripeClient: Stripe | null = null;
 function getStripe() {
@@ -335,18 +343,31 @@ async function startServer() {
     }
   });
 
-  // API 2: /api/conversations (to list sessions in terminal side rail)
-  app.get("/api/conversations", (req, res) => {
-    const db = loadDatabase();
+  // API 2: /api/conversations - fetch user's conversations from Supabase
+  app.get("/api/conversations", async (req, res) => {
     const userId = req.query.user_id as string | undefined;
     
-    let convs = db.conversations;
-    // Filter by user_id if provided — prevents users seeing each other's chats
-    if (userId) {
-      convs = convs.filter(c => c.user_id === userId);
+    // Try Supabase first
+    if (supabaseAdmin && userId) {
+      try {
+        const { data, error } = await supabaseAdmin
+          .from("conversations")
+          .select("id, title, created_at, user_id")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(50);
+        if (!error && data) {
+          return res.json(data);
+        }
+      } catch (e) {
+        console.error("Supabase conversations fetch error:", e);
+      }
     }
-    
-    // Deduplicate by ID
+
+    // Local fallback
+    const db = loadDatabase();
+    let convs = db.conversations;
+    if (userId) convs = convs.filter(c => c.user_id === userId);
     const seen = new Set<string>();
     const unique = convs.filter(conv => {
       if (seen.has(conv.id)) return false;
@@ -356,20 +377,51 @@ async function startServer() {
     res.json(unique.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
   });
 
-  // API 3: /api/conversations/:id/messages (retrieve chat lines)
-  app.get("/api/conversations/:id/messages", (req, res) => {
+  // API 3: /api/conversations/:id/messages
+  app.get("/api/conversations/:id/messages", async (req, res) => {
+    const convId = req.params.id;
+
+    if (supabaseAdmin) {
+      try {
+        const { data, error } = await supabaseAdmin
+          .from("messages")
+          .select("id, conversation_id, role, content, created_at")
+          .eq("conversation_id", convId)
+          .order("created_at", { ascending: true });
+        if (!error && data) {
+          return res.json(data);
+        }
+      } catch (e) {
+        console.error("Supabase messages fetch error:", e);
+      }
+    }
+
+    // Local fallback
     const db = loadDatabase();
     const filtered = db.messages
-      .filter((m) => m.conversation_id === req.params.id)
+      .filter((m) => m.conversation_id === convId)
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
     res.json(filtered);
   });
 
   // API 4: delete conversation
-  app.delete("/api/conversations/:id", (req, res) => {
+  app.delete("/api/conversations/:id", async (req, res) => {
+    const convId = req.params.id;
+
+    if (supabaseAdmin) {
+      try {
+        await supabaseAdmin.from("messages").delete().eq("conversation_id", convId);
+        await supabaseAdmin.from("conversations").delete().eq("id", convId);
+        return res.json({ success: true });
+      } catch (e) {
+        console.error("Supabase delete error:", e);
+      }
+    }
+
+    // Local fallback
     const db = loadDatabase();
-    db.conversations = db.conversations.filter(c => c.id !== req.params.id);
-    db.messages = db.messages.filter(m => m.conversation_id !== req.params.id);
+    db.conversations = db.conversations.filter(c => c.id !== convId);
+    db.messages = db.messages.filter(m => m.conversation_id !== convId);
     saveDatabase(db);
     res.json({ success: true });
   });
@@ -694,6 +746,16 @@ async function startServer() {
           created_at: new Date().toISOString(),
         };
         db.conversations.push(conv);
+        // Save to Supabase
+        if (supabaseAdmin) {
+          supabaseAdmin.from("conversations").upsert({
+            id: activeConvId,
+            user_id: user_id,
+            title: title || "New Chat"
+          }).then(({ error }) => {
+            if (error) console.error("Supabase conv save error:", error.message);
+          });
+        }
         log("CONV_RESOLVE", `Allocated core cache sequence: ${activeConvId}`, "SUCCESS");
       }
 
@@ -706,6 +768,17 @@ async function startServer() {
         created_at: new Date().toISOString(),
       };
       db.messages.push(userMsg);
+      // Save to Supabase
+      if (supabaseAdmin) {
+        supabaseAdmin.from("messages").insert({
+          id: userMsg.id,
+          conversation_id: activeConvId,
+          role: "user",
+          content: message
+        }).then(({ error }) => {
+          if (error) console.error("Supabase user msg save error:", error.message);
+        });
+      }
       log("INPUT_STORE", "Buffered instruction stack to localized persistence", "INFO");
 
       // Extract conversational history
@@ -780,6 +853,17 @@ async function startServer() {
       };
       db.messages.push(aiMsg);
       saveDatabase(db);
+      // Save AI message to Supabase
+      if (supabaseAdmin) {
+        supabaseAdmin.from("messages").insert({
+          id: aiMsg.id,
+          conversation_id: activeConvId,
+          role: "assistant",
+          content: answerText
+        }).then(({ error }) => {
+          if (error) console.error("Supabase AI msg save error:", error.message);
+        });
+      }
       log("OUTPUT_STORE", "Answer registered. Cache state synchronized.", "SUCCESS");
 
       res.json({
