@@ -68,15 +68,14 @@ export default function StatusBar({
       
       {/* 1. Model Selector Left (Masidy customized, no ChatGPT dropdown leftovers) */}
       <div className="flex items-center space-x-3 relative" ref={dropdownRef}>
-        {isSidebarCollapsed && (
-          <button
-            onClick={onToggleSidebar}
-            className="p-1.5 bg-white hover:bg-slate-100 dark:bg-zinc-850 dark:hover:bg-zinc-700 text-slate-650 dark:text-zinc-350 border border-slate-200 dark:border-zinc-700 rounded-lg cursor-pointer transition flex items-center justify-center focus:outline-none focus:ring-1 focus:ring-indigo-500/20 shadow-sm hover:shadow-md"
-            title="Expand Sidebar"
-          >
-            <Menu className="w-4 h-4" />
-          </button>
-        )}
+        {/* Always show menu button on mobile, show on desktop only when collapsed */}
+        <button
+          onClick={onToggleSidebar}
+          className={`p-1.5 bg-white hover:bg-slate-100 dark:bg-zinc-850 dark:hover:bg-zinc-700 text-slate-650 dark:text-zinc-350 border border-slate-200 dark:border-zinc-700 rounded-lg cursor-pointer transition flex items-center justify-center focus:outline-none shadow-sm hover:shadow-md ${isSidebarCollapsed ? "flex" : "flex md:hidden"}`}
+          title="Toggle Sidebar"
+        >
+          <Menu className="w-4 h-4" />
+        </button>
         <button 
           onClick={() => setModelDropdown(!modelDropdown)}
           className="flex items-center space-x-2 px-4 py-2 hover:bg-slate-100 dark:hover:bg-zinc-800/80 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer text-slate-900 dark:text-zinc-100 border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-sm hover:shadow-md"
@@ -85,8 +84,8 @@ export default function StatusBar({
           <ChevronDown className="w-4 h-4 text-slate-500 dark:text-zinc-400" />
         </button>
 
-        {/* Dynamic Connected green status light tag */}
-        <div className="flex items-center space-x-2 opacity-95">
+        {/* Dynamic Connected green status light tag — hidden on small screens */}
+        <div className="hidden sm:flex items-center space-x-2 opacity-95">
           <span className={`h-2 w-2 rounded-full ${currentStatus.color}`} />
           <span className="text-[10px] text-slate-600 dark:text-slate-400 font-bold uppercase tracking-wider font-mono">
              {currentStatus.text}
@@ -139,10 +138,10 @@ export default function StatusBar({
           <button
             onClick={onClearChat}
             className="flex items-center space-x-2 py-1.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800/60 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-zinc-100 rounded-lg text-xs font-bold cursor-pointer transition-all shadow-sm hover:shadow-md"
-            title="Clear active chat feed of user outputs"
+            title="Clear active chat feed"
           >
             <RotateCcw className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-400" />
-            <span>Clear Threads</span>
+            <span className="hidden sm:inline">Clear Threads</span>
           </button>
         )}
 

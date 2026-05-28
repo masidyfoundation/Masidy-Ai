@@ -189,7 +189,7 @@ export default function InputBar({
   };
 
   return (
-    <div className="bg-gradient-to-b from-white to-neutral-50 dark:from-[#0c0c0e] dark:to-zinc-950 px-4 pb-4 select-none shrink-0 font-sans transition-colors duration-150 border-t border-neutral-200 dark:border-zinc-800/50">
+    <div className="bg-gradient-to-b from-white to-neutral-50 dark:from-[#0c0c0e] dark:to-zinc-950 px-3 pb-4 pt-2 select-none shrink-0 font-sans transition-colors duration-150 border-t border-neutral-200 dark:border-zinc-800/50 safe-area-bottom">
       <div className="max-w-3xl mx-auto w-full">
         
         {/* Model Selector — 5 models, locked ones disabled */}

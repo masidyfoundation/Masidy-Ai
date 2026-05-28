@@ -105,9 +105,17 @@ export default function Sidebar({
   return (
     <div 
       style={{ width: isCollapsed ? 0 : `${width}px` }}
-      className={`relative bg-[#f9f9f9] dark:bg-[#0f0f11] border-r border-[#e5e5e5] dark:border-zinc-800/80 flex flex-col h-full shrink-0 text-[#0d0d0d] dark:text-[#f4f4f5] font-sans group/sidebar ${
-        isDragging ? "select-none" : "transition-[width,opacity] duration-300 ease-in-out"
-      } ${isCollapsed ? "w-0 overflow-hidden border-r-0 opacity-0 pointer-events-none" : "opacity-100"}`}
+      className={`
+        bg-[#f9f9f9] dark:bg-[#0f0f11] border-r border-[#e5e5e5] dark:border-zinc-800/80 
+        flex flex-col h-full text-[#0d0d0d] dark:text-[#f4f4f5] font-sans
+        ${isDragging ? "select-none" : "transition-[width,opacity] duration-300 ease-in-out"}
+        ${isCollapsed ? "w-0 overflow-hidden border-r-0 opacity-0 pointer-events-none" : "opacity-100"}
+        fixed md:relative z-40 md:z-auto
+        top-0 left-0 bottom-0
+        ${isCollapsed ? "hidden" : "flex"}
+        md:flex md:shrink-0
+        w-[280px] md:w-auto
+      `}
     >
       
       {/* 1. Brand Logo Header */}

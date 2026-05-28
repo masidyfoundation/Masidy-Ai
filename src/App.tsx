@@ -556,6 +556,13 @@ export default function App() {
       <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
         
         {/* Left conversations and navigation bar */}
+        {/* Mobile: overlay drawer with backdrop */}
+        {!isSidebarCollapsed && (
+          <div
+            className="fixed inset-0 bg-black/40 z-30 md:hidden"
+            onClick={handleToggleSidebarCollapse}
+          />
+        )}
         <Sidebar
           conversations={conversations}
           activeConvId={activeConvId}
