@@ -57,7 +57,7 @@ For more details, see [FEATURES.md](FEATURES.md).
 ### For Users (5 minutes)
 
 1. **Open Masidy**
-   - Web: https://masidy.ai
+   - Web: https://masidy.com
    - Or local: http://localhost:3000 (after setup)
 
 2. **Select Your Model**
@@ -167,7 +167,7 @@ Generate ideas, explore possibilities, creative projects
 | **Pro** | $9.99/mo | Unlimited, all models, priority support |
 | **Enterprise** | Custom | API access, team features, SLA |
 
-[View pricing](https://masidy.ai/pricing)
+[View pricing](https://masidy.com/pricing)
 
 ---
 
@@ -195,7 +195,7 @@ Want to build on Masidy? Use our API:
 
 ```bash
 # Send a message
-curl -X POST https://api.masidy.ai/api/chat \
+curl -X POST https://api.masidy.com/api/chat \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{"message": "Hello!", "model": "masidy-pro"}'
 ```
@@ -223,7 +223,7 @@ Full API reference: [API_DOCS.md](API_DOCS.md)
 
 ## Community
 
-- **Forum**: https://community.masidy.ai
+- **Forum**: https://community.masidy.com
 - **GitHub**: https://github.com/YOUR_USERNAME/masidy-ai
 - **Discord**: https://discord.gg/masidy
 - **Twitter**: @MasidyAI
@@ -234,10 +234,10 @@ Full API reference: [API_DOCS.md](API_DOCS.md)
 
 ### Getting Help
 
-- **FAQ**: https://masidy.ai/faq
-- **Email**: support@masidy.ai
-- **Community**: https://community.masidy.ai
-- **Status**: https://status.masidy.ai
+- **FAQ**: https://masidy.com/faq
+- **Email**: support@masidy.com
+- **Community**: https://community.masidy.com
+- **Status**: https://status.masidy.com
 
 ### Report Issues
 
@@ -245,7 +245,7 @@ Found a bug? [Open an issue](https://github.com/YOUR_USERNAME/masidy-ai/issues)
 
 ### Feature Requests
 
-Have an idea? [Share feedback](https://feedback.masidy.ai)
+Have an idea? [Share feedback](https://feedback.masidy.com)
 
 ---
 
@@ -267,9 +267,9 @@ Masidy AI is licensed under the MIT License. See [LICENSE](LICENSE) file for det
 
 ## Legal
 
-- **Terms of Service**: https://masidy.ai/terms
-- **Privacy Policy**: https://masidy.ai/privacy
-- **Cookie Policy**: https://masidy.ai/cookies
+- **Terms of Service**: https://masidy.com/terms
+- **Privacy Policy**: https://masidy.com/privacy
+- **Cookie Policy**: https://masidy.com/cookies
 
 ---
 
@@ -278,8 +278,8 @@ Masidy AI is licensed under the MIT License. See [LICENSE](LICENSE) file for det
     Made with ❤️ by the Masidy team
   </p>
   <p>
-    <a href="https://masidy.ai">Website</a> •
-    <a href="https://blog.masidy.ai">Blog</a> •
+    <a href="https://masidy.com">Website</a> •
+    <a href="https://blog.masidy.com">Blog</a> •
     <a href="https://twitter.com/MasidyAI">Twitter</a>
   </p>
 </div>

@@ -400,12 +400,12 @@ If response isn't perfect:
 
 **Have questions?**
 - Check [USER_GUIDE.md](USER_GUIDE.md)
-- Visit https://community.masidy.ai
-- Email support@masidy.ai
+- Visit https://community.masidy.com
+- Email support@masidy.com
 
 **Suggest features?**
-- Community feedback: https://feedback.masidy.ai
-- Email: product@masidy.ai
+- Community feedback: https://feedback.masidy.com
+- Email: product@masidy.com
 
 ---
 

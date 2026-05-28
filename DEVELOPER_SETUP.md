@@ -205,7 +205,7 @@ PYTHON_ENV=development
 ### Deployment (.env.production)
 
 ```
-VITE_API_URL=https://api.masidy.ai
+VITE_API_URL=https://api.masidy.com
 NODE_ENV=production
 ```
 
@@ -415,8 +415,8 @@ To contribute improvements:
 
 ## Resources
 
-- **Documentation**: https://docs.masidy.ai
-- **Community**: https://community.masidy.ai
+- **Documentation**: https://docs.masidy.com
+- **Community**: https://community.masidy.com
 - **Issue Tracker**: https://github.com/YOUR_USERNAME/masidy-ai/issues
 - **Discussions**: https://github.com/YOUR_USERNAME/masidy-ai/discussions
 
@@ -424,8 +424,8 @@ To contribute improvements:
 
 ## Support
 
-- **Forum**: https://community.masidy.ai
-- **Email**: dev-support@masidy.ai
+- **Forum**: https://community.masidy.com
+- **Email**: dev-support@masidy.com
 - **Discord**: https://discord.gg/masidy
 
 ---

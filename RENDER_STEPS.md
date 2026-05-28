@@ -107,7 +107,7 @@ git push -u origin main
 ## Step 7: Configure Custom Domain (Optional)
 
 1. In Render Dashboard → Settings
-2. Add custom domain (e.g., masidy.ai)
+2. Add custom domain (e.g., masidy.com)
 3. Update VITE_API_URL if needed
 
 ## Troubleshooting

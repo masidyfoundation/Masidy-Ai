@@ -313,18 +313,18 @@ See [RENDER_STEPS.md](RENDER_STEPS.md) for complete deployment guide.
 ## Contact & Support
 
 **For Users**:
-- Website: https://masidy.ai
-- Support: support@masidy.ai
-- Community: https://community.masidy.ai
+- Website: https://masidy.com
+- Support: support@masidy.com
+- Community: https://community.masidy.com
 
 **For Developers**:
 - GitHub: https://github.com/YOUR_USERNAME/masidy-ai
-- Docs: https://docs.masidy.ai
-- API: https://api.masidy.ai
+- Docs: https://docs.masidy.com
+- API: https://api.masidy.com
 
 **For Partners**:
-- Email: partnerships@masidy.ai
-- Enterprise: enterprise@masidy.ai
+- Email: partnerships@masidy.com
+- Enterprise: enterprise@masidy.com
 
 ---
 

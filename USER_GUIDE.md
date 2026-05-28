@@ -163,8 +163,8 @@ See our [Privacy Policy](#) for details.
 
 Need more support?
 - **In-app tutorial**: Click the "?" icon
-- **Email support**: support@masidy.ai
-- **Community forum**: forum.masidy.ai
+- **Email support**: support@masidy.com
+- **Community forum**: forum.masidy.com
 - **Documentation**: See [Features Guide](FEATURES.md)
 
 ## What's Coming
@@ -182,4 +182,4 @@ Stay tuned for updates!
 
 **Version**: 1.0.0  
 **Last Updated**: May 2026  
-**Questions?** Contact support@masidy.ai
+**Questions?** Contact support@masidy.com

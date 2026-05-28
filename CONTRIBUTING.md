@@ -106,7 +106,7 @@ All PRs require:
 
 - **Discord**: https://discord.gg/masidy
 - **GitHub Discussions**: https://github.com/masidy-ai/masidy-ai/discussions
-- **Email**: dev-support@masidy.ai
+- **Email**: dev-support@masidy.com
 
 ## Recognition
 

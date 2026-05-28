@@ -22,7 +22,7 @@ We are committed to providing a welcoming and inspiring community for all. We ex
 ## Reporting Issues
 
 If you witness or experience unacceptable behavior, please report it to:
-- Email: conduct@masidy.ai
+- Email: conduct@masidy.com
 - GitHub: Report through GitHub's abuse tools
 
 ## Enforcement

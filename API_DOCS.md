@@ -5,7 +5,7 @@ For developers integrating with Masidy or extending functionality.
 ## Base URL
 
 ```
-https://api.masidy.ai
+https://api.masidy.com
 ```
 
 For local development:
@@ -329,7 +329,7 @@ headers = {"Authorization": f"Bearer {token}"}
 
 # Send message
 response = requests.post(
-    "https://api.masidy.ai/api/chat",
+    "https://api.masidy.com/api/chat",
     headers=headers,
     json={
         "message": "What is AI?",
@@ -343,7 +343,7 @@ print(result["response"])
 
 ### JavaScript
 ```javascript
-const response = await fetch('https://api.masidy.ai/api/chat', {
+const response = await fetch('https://api.masidy.com/api/chat', {
   method: 'POST',
   headers: {
     'Authorization': `Bearer ${token}`,
@@ -361,7 +361,7 @@ console.log(data.response);
 
 ### cURL
 ```bash
-curl -X POST https://api.masidy.ai/api/chat \
+curl -X POST https://api.masidy.com/api/chat \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -402,10 +402,10 @@ curl -X POST https://api.masidy.ai/api/chat \
 
 ## Support
 
-- **Documentation**: https://docs.masidy.ai
-- **Status**: https://status.masidy.ai
-- **Email**: api-support@masidy.ai
-- **Community**: https://community.masidy.ai
+- **Documentation**: https://docs.masidy.com
+- **Status**: https://status.masidy.com
+- **Email**: api-support@masidy.com
+- **Community**: https://community.masidy.com
 
 ---
 

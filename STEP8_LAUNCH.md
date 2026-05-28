@@ -256,7 +256,7 @@ curl -X GET https://masidy-gateway.onrender.com/api/models
 
 🎉 **We're Live!**
 
-Masidy AI is now publicly available at masidy.ai
+Masidy AI is now publicly available at masidy.com
 
 ## What's Included
 
@@ -295,9 +295,9 @@ Masidy AI is now publicly available at masidy.ai
 
 ## Support
 
-- Website: https://masidy.ai
-- Community: https://community.masidy.ai
-- Email: support@masidy.ai
+- Website: https://masidy.com
+- Community: https://community.masidy.com
+- Email: support@masidy.com
 
 ## What's Next
 
