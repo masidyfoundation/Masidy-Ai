@@ -43,38 +43,67 @@ ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_profile ENABLE ROW LEVEL SECURITY;
 
--- Create dynamic security access control policies
--- For the simplicity of standard Supabase anonymous user access mapping (auth.uid()):
+-- ============================================================
+-- SERVICE ROLE BYPASS (allows backend/FastAPI full access)
+-- These policies allow the Supabase service_role key to bypass
+-- RLS so the backend can read/write on behalf of any user.
+-- ============================================================
 
--- USERS POLICIES
-CREATE POLICY "Users can only read and manage their own entry" ON users
-    FOR ALL
-    USING (id = auth.uid() OR external_id = auth.jwt() ->> 'sub');
+-- Drop old policies first to avoid conflicts
+DROP POLICY IF EXISTS "Users can only read and manage their own entry" ON users;
+DROP POLICY IF EXISTS "Users can manage conversations belonging to them" ON conversations;
+DROP POLICY IF EXISTS "Users can manage messages within their conversations" ON messages;
+DROP POLICY IF EXISTS "Users can manage their personal profiles" ON user_profile;
+DROP POLICY IF EXISTS "Service role bypass users" ON users;
+DROP POLICY IF EXISTS "Service role bypass conversations" ON conversations;
+DROP POLICY IF EXISTS "Service role bypass messages" ON messages;
+DROP POLICY IF EXISTS "Service role bypass user_profile" ON user_profile;
+DROP POLICY IF EXISTS "Authenticated users manage own data" ON users;
+DROP POLICY IF EXISTS "Authenticated users manage own conversations" ON conversations;
+DROP POLICY IF EXISTS "Authenticated users manage own messages" ON messages;
+DROP POLICY IF EXISTS "Authenticated users manage own profile" ON user_profile;
 
--- CONVERSATIONS POLICIES
-CREATE POLICY "Users can manage conversations belonging to them" ON conversations
-    FOR ALL
-    USING (user_id = auth.uid() OR user_id IN (
-        SELECT id FROM users WHERE external_id = auth.jwt() ->> 'sub'
+-- USERS: service role full access + authenticated user own row
+CREATE POLICY "Service role bypass users" ON users
+    FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "Authenticated users manage own data" ON users
+    FOR ALL TO authenticated
+    USING (id = auth.uid() OR external_id = auth.uid()::text);
+
+-- CONVERSATIONS: service role full access + authenticated user own rows
+CREATE POLICY "Service role bypass conversations" ON conversations
+    FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "Authenticated users manage own conversations" ON conversations
+    FOR ALL TO authenticated
+    USING (user_id IN (
+        SELECT id FROM users WHERE id = auth.uid() OR external_id = auth.uid()::text
     ));
 
--- MESSAGES POLICIES
-CREATE POLICY "Users can manage messages within their conversations" ON messages
-    FOR ALL
+-- MESSAGES: service role full access + authenticated user own rows
+CREATE POLICY "Service role bypass messages" ON messages
+    FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "Authenticated users manage own messages" ON messages
+    FOR ALL TO authenticated
     USING (conversation_id IN (
-        SELECT id FROM conversations WHERE user_id = auth.uid() OR user_id IN (
-            SELECT id FROM users WHERE external_id = auth.jwt() ->> 'sub'
-        )
+        SELECT c.id FROM conversations c
+        JOIN users u ON c.user_id = u.id
+        WHERE u.id = auth.uid() OR u.external_id = auth.uid()::text
     ));
 
--- USER PROFILE POLICIES
-CREATE POLICY "Users can manage their personal profiles" ON user_profile
-    FOR ALL
-    USING (user_id = auth.uid() OR user_id IN (
-        SELECT id FROM users WHERE external_id = auth.jwt() ->> 'sub'
+-- USER PROFILE: service role full access + authenticated user own row
+CREATE POLICY "Service role bypass user_profile" ON user_profile
+    FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "Authenticated users manage own profile" ON user_profile
+    FOR ALL TO authenticated
+    USING (user_id IN (
+        SELECT id FROM users WHERE id = auth.uid() OR external_id = auth.uid()::text
     ));
 
--- Indeces for maximum visual search throughput
+-- Indexes for maximum query throughput
 CREATE INDEX IF NOT EXISTS idx_users_external ON users(external_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id);
 CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
