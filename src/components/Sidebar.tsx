@@ -366,6 +366,25 @@ export default function Sidebar({
           <span>Workspace Preferences</span>
         </button>
 
+        {/* Auth button — always visible at bottom */}
+        {!isAuthenticated ? (
+          <button
+            onClick={onConnectOAuth}
+            className="w-full flex items-center space-x-2.5 py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors"
+          >
+            <UserPlus className="w-4 h-4 shrink-0" />
+            <span>Sign In / Create Account</span>
+          </button>
+        ) : (
+          <button
+            onClick={onSignOut}
+            className="w-full flex items-center space-x-2.5 py-2 px-3 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-xs font-semibold cursor-pointer transition-colors"
+          >
+            <LogOut className="w-4 h-4 shrink-0" />
+            <span>Sign Out</span>
+          </button>
+        )}
+
         {/* User Account Capsule Details */}
         <div className="pt-2 border-t border-neutral-200 dark:border-zinc-800 mt-2 flex items-center space-x-3">
           
