@@ -88,6 +88,11 @@ export default function App() {
 
   // Load preferences from local cache on start
   useEffect(() => {
+    // Clear stale model cache so fresh models always load
+    localStorage.removeItem("masidy_models_cache");
+    localStorage.removeItem("masidy_models_cache_time");
+    localStorage.removeItem("masidy_models_cache_tier");
+
     const localKeys = localStorage.getItem("masidy_telemetry_keys");
     if (localKeys) {
       try {
@@ -130,57 +135,38 @@ export default function App() {
     }
   }, []);
 
-  // Load available Masidy models (with caching) - Fetch tier-specific models
+  // Load available Masidy models - always fetch fresh, show all with lock indicators
   useEffect(() => {
     const loadModels = async () => {
-      // Check for cached models (cache for 1 hour)
-      const cachedModels = localStorage.getItem("masidy_models_cache");
-      const cachedTier = localStorage.getItem("masidy_models_cache_tier");
-      const cacheTimestamp = localStorage.getItem("masidy_models_cache_time");
-      const now = Date.now();
-      const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
-
-      if (cachedModels && cacheTimestamp && cachedTier === activePlan) {
-        const cacheAge = now - parseInt(cacheTimestamp, 10);
-        if (cacheAge < CACHE_DURATION) {
-          try {
-            const models = JSON.parse(cachedModels);
-            setAvailableModels(models);
-            return;
-          } catch (e) {
-            console.warn("Cache parse error:", e);
-          }
-        }
-      }
-
-      // Fetch fresh models for current tier
       try {
-        // Convert tier names for backend compatibility
-        const tierParam = activePlan.toUpperCase().replace(/[^A-Z]/g, '');
-        const tierMap: { [key: string]: string } = {
-          "FREE": "FREE",
-          "STARTER": "STARTER",
-          "BASE": "BASE",
-          "PRO": "PRO",
-          "MAX": "MAX"
-        };
-        const mappedTier = tierMap[activePlan] || "FREE";
-        
-        const res = await fetch(`/api/models?tier=${mappedTier}`);
+        // Always fetch all models (backend returns all with locked flag per tier)
+        const res = await fetch(`/api/models?tier=${activePlan}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        if (data.models) {
+        if (data.models && data.models.length > 0) {
           setAvailableModels(data.models);
-          // Cache the result with tier info
-          localStorage.setItem("masidy_models_cache", JSON.stringify(data.models));
-          localStorage.setItem("masidy_models_cache_time", now.toString());
-          localStorage.setItem("masidy_models_cache_tier", activePlan);
         }
       } catch (err) {
         console.error("Failed to load models:", err);
-        addToast("Failed to load available models", "error", 5000);
+        // Hardcoded fallback so selector always has all models
+        setAvailableModels([
+          { id: "free-base", name: "Free Base", description: "Core assistant (8B)", tier: "FREE", locked: false },
+          { id: "starter-base", name: "Starter Base", description: "Enhanced assistant (8B)", tier: "STARTER", locked: activePlan === "FREE" },
+          { id: "starter-research", name: "Starter Research", description: "Research specialist (Mixtral)", tier: "STARTER", locked: activePlan === "FREE" },
+          { id: "base-general", name: "Base General", description: "General expert (8B)", tier: "BASE", locked: !["BASE","PRO","MAX"].includes(activePlan) },
+          { id: "base-research", name: "Base Research", description: "Advanced research (Mixtral)", tier: "BASE", locked: !["BASE","PRO","MAX"].includes(activePlan) },
+          { id: "base-code", name: "Base Code", description: "Expert programmer (70B)", tier: "BASE", locked: !["BASE","PRO","MAX"].includes(activePlan) },
+          { id: "pro-general", name: "Pro General", description: "Expert all domains (70B)", tier: "PRO", locked: !["PRO","MAX"].includes(activePlan) },
+          { id: "pro-research", name: "Pro Research", description: "Expert research (Mixtral)", tier: "PRO", locked: !["PRO","MAX"].includes(activePlan) },
+          { id: "pro-code", name: "Pro Code", description: "Senior engineer (70B)", tier: "PRO", locked: !["PRO","MAX"].includes(activePlan) },
+          { id: "pro-creative", name: "Pro Creative", description: "Creative writing (Mixtral)", tier: "PRO", locked: !["PRO","MAX"].includes(activePlan) },
+          { id: "max-general", name: "Max General", description: "Ultimate expert (405B)", tier: "MAX", locked: activePlan !== "MAX" },
+          { id: "max-code", name: "Max Code", description: "Principal architect (405B)", tier: "MAX", locked: activePlan !== "MAX" },
+          { id: "max-creative", name: "Max Creative", description: "Master creator (Mixtral)", tier: "MAX", locked: activePlan !== "MAX" },
+          { id: "max-premium", name: "Max Premium", description: "Reserved capacity (405B)", tier: "MAX", locked: activePlan !== "MAX" },
+        ]);
       }
     };
-
     loadModels();
   }, [activePlan]);
 

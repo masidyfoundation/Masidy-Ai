@@ -19,7 +19,7 @@ function getStripe() {
 }
 
 const PORT = 3000;
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
+const BACKEND_URL = process.env.BACKEND_URL || "https://masidy-backend-za1t.onrender.com";
 const DB_FILE = path.join(process.cwd(), "local_db.json");
 
 // Tier normalization for backward compatibility with Supabase
