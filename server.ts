@@ -686,11 +686,10 @@ async function startServer() {
 
       let conv = db.conversations.find((c) => c.id === activeConvId);
       if (!conv) {
-        // Generate a proper UUID so Supabase accepts it
         activeConvId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
         conv = {
           id: activeConvId,
-          user_id: user.id,
+          user_id: user_id,  // store external_id so frontend filter works
           title: title || "New Console Log",
           created_at: new Date().toISOString(),
         };
