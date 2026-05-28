@@ -1,0 +1,6 @@
+{
+  "name": "Masidy Companion",
+  "description": "An elegant, high-fidelity AI companion and analytical workspace featuring standard chat pipelines, active deep research tools, and visual generation studios.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

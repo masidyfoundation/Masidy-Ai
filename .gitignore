@@ -1,0 +1,89 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.sublime-workspace
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+local_db.json
+
+# Dependencies
+yarn.lock
+package-lock.json
+
+# Build
+dist/
+*.map
+
+# Testing
+.nyc_output/
+coverage/
+.pytest_cache/
+
+# Runtime
+node_modules/
+__pycache__/
+*.pid
+
+# Environment
+.env
+.env.local
+.env.production
+.env.development
+.env.test
+
+# IDE settings (personal)
+.vscode/settings.json
+.idea/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
