@@ -815,13 +815,8 @@ async function startServer() {
         answerText = backendData.answer || "No response from backend.";
         log("MODEL_ROUTE", "Inference complete, backend response decoded", "SUCCESS");
       } catch (err: any) {
-        log("MODEL_ROUTE", `FastAPI backend unavailable: ${err.message}. Ensure backend is running on :8000`, "WARNING");
-        answerText = `[MASIDY BACKEND OFFLINE]: FastAPI backend is not responding.\n\n` +
-          `Parsed instruction: "${message}"\n\n` +
-          `- Backend connection status: OFFLINE\n` +
-          `- Timestamp: ${new Date().toISOString()}\n\n` +
-          `To activate operations, ensure the FastAPI backend is running:\n` +
-          `  uvicorn backend.app:app --reload --port 8000`;
+        log("MODEL_ROUTE", `Backend unavailable: ${err.message}`, "WARNING");
+        answerText = "We're having trouble connecting right now. Please try again in a moment.";
       }
 
       // Persist AI Answer (awaited)
@@ -851,10 +846,9 @@ async function startServer() {
       });
 
     } catch (err: any) {
-      log("FATAL_ERROR", `Operational breakdown reported: ${err.message}`, "WARNING");
+      log("FATAL_ERROR", `Error: ${err.message}`, "WARNING");
       res.status(500).json({
-        error: err.message,
-        logs: telemetryLogs,
+        error: "Something went wrong. Please try again.",
       });
     }
   });

@@ -236,17 +236,21 @@ async def chat_endpoint(request: ChatRequest):
         print(generate_telemetry_log("PULL_HISTORY", "Analyzing conversational context"))
         raw_history = get_history(conversation_id, limit=10)
         
-        # Format history as role/content dict blocks — no system prompt, just clean history
+        # Format history as role/content dict blocks — system prompt first, then clean history
         messages = []
-        
+
+        # Add Masidy identity system prompt
+        system_prompt = get_system_prompt(model_id, user_tier)
+        messages.append({"role": "system", "content": system_prompt})
+
         for h in raw_history:
             role = h.get("role", "user")
             content = h.get("content", "")
-            # Skip system messages and old bad assistant intro responses
+            # Skip any system messages from history (we add our own above)
             if role == "system":
                 continue
             messages.append({"role": role, "content": content})
-            
+
         # Add the current user message at the end
         messages.append({"role": "user", "content": user_message})
             
@@ -276,7 +280,7 @@ async def chat_endpoint(request: ChatRequest):
         }
     except Exception as e:
         print(generate_telemetry_log("FATAL_ERROR", str(e), level="ERROR"))
-        raise HTTPException(status_code=500, detail=f"Masidy Central processing failure: {str(e)}")
+        raise HTTPException(status_code=500, detail="Something went wrong. Please try again.")
 
 @app.post("/api/chat")
 async def api_chat_endpoint(request: ChatRequest):

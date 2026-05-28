@@ -272,11 +272,11 @@ export default function App() {
           setActiveConvId(data[0].id);
         }
       } else {
-        addToast("Failed to load conversations", "error", 5000);
+        addToast("Couldn't load conversations. Please refresh.", "error", 5000);
       }
     } catch (e: any) {
       console.error("Express background proxy currently unreachable.", e);
-      addToast("Error loading conversations", "error", 5000);
+      addToast("Couldn't load conversations. Please refresh.", "error", 5000);
     } finally {
       fetchConversationsInProgressRef.current = false;
     }
@@ -338,7 +338,7 @@ export default function App() {
       }
     } catch (err: any) {
       console.error("Purging chat reference failure:", err);
-      addToast(`Error deleting conversation: ${err.message}`, "error", 5000);
+      addToast("Couldn't delete this conversation. Please try again.", "error", 5000);
     }
   };
 
@@ -366,20 +366,10 @@ export default function App() {
       setIsThinking(true);
       setStatus("THINKING");
 
-      // Pre-render User message immediately for rapid sensory response
-      const clientUserMsg: Message = {
-        id: `u-${Date.now()}`,
-        conversation_id: activeConvId || "draft_chat",
-        role: "user",
-        content: rawMessage,
-        created_at: new Date().toISOString()
-      };
-      setMessages(prev => [...prev, clientUserMsg]);
-
-      // Heuristically predict research status indicators
+      // Don't pre-render optimistically — wait for confirmed response to avoid duplicates
       const isSearchTrigger = /search|research|google|weather|price|stock|recent|current|latest|news/i.test(rawMessage.toLowerCase());
       if (isSearchTrigger) {
-         setTimeout(() => setStatus("RESEARCHING"), 400);
+        setTimeout(() => setStatus("RESEARCHING"), 400);
       }
       const savedInstructions = localStorage.getItem("masidy_instructions") || "";
       const finalizedPayloadMessage = savedInstructions.trim() 
@@ -411,15 +401,10 @@ export default function App() {
           id: `msg-limit-${Date.now()}`,
           conversation_id: activeConvId || "limit_lockout",
           role: "assistant",
-          content: `### ⚠️ QUANTUM METRIC EXCEEDED [429 LOCKOUT]\n\n` +
-            `**${errorData.error}**\n\n` +
-            `Throughput Limit: **${errorData.telemetry?.limit} queries/min**\n` +
-            `- **Active Workspace Level**: \`${activePlan}\`\n` +
-            `- **System Recovery Timer**: \`${errorData.telemetry?.resetTime}s remaining\`\n\n` +
-            `To unlock high-throughput parallel execution, select **Plans & Subscription** in the sidebar to sync a secure mock Stripe upgrade, or allow the recovery window to cycle back to standard levels.`,
+          content: `You've reached your message limit for this minute. Please wait a moment and try again.\n\nUpgrade your plan for higher limits.`,
           created_at: new Date().toISOString()
         };
-        setMessages(prev => [...prev.filter(m => m.id !== clientUserMsg.id), clientUserMsg, infoMsg]);
+        setMessages(prev => [...prev, infoMsg]);
         setStatus("OFFLINE");
         setIsThinking(false);
         requestInProgressRef.current = false;
@@ -431,42 +416,37 @@ export default function App() {
       }
 
       const resData = await resp.json();
-      const aiMsg: Message = {
-        id: `msg-${Math.random().toString(36).substring(2, 9)}`,
-        conversation_id: resData.conversation_id,
-        role: "assistant",
-        content: resData.answer,
-        created_at: new Date().toISOString()
-      };
 
-      // Align list of messages accurately
-      setMessages(prev => {
-        const filtered = prev.filter(m => m.id !== clientUserMsg.id);
-        const alignedUser: Message = {
-          ...clientUserMsg,
-          conversation_id: resData.conversation_id
-        };
-        return [...filtered, alignedUser, aiMsg];
-      });
-
+      // Fetch the authoritative message list from server to avoid duplicates
       setActiveConvId(resData.conversation_id);
+      const msgResp = await fetch(`/api/conversations/${resData.conversation_id}/messages`);
+      if (msgResp.ok) {
+        const freshMessages = await msgResp.json();
+        setMessages(freshMessages);
+      } else {
+        // Fallback: add AI message manually
+        const aiMsg: Message = {
+          id: `msg-${Math.random().toString(36).substring(2, 9)}`,
+          conversation_id: resData.conversation_id,
+          role: "assistant",
+          content: resData.answer,
+          created_at: new Date().toISOString()
+        };
+        setMessages(prev => [...prev, aiMsg]);
+      }
       await fetchConversations();
       addToast("Message sent successfully", "success", 3000);
       setStatus("ONLINE");
     } catch (err: any) {
       console.error("API proxy failure:", err);
-      addToast(`Error sending message: ${err.message || "Unknown error"}`, "error", 5000);
+      addToast("Something went wrong. Please try again.", "error", 5000);
       
       // Fallback response block
       const fallbackAiMsg: Message = {
         id: `msg-err-${Date.now()}`,
         conversation_id: activeConvId || "error_session",
         role: "assistant",
-        content: `**Operational Alert**: Deep inference was blocked. Please verify your internet connection.\n\n` +
-          `*Fallback Diagnostic Output*:\n` +
-          `- API Endpoint: \`/api/chat\`\n` +
-          `- Issue: Node development server reports connection errors.\n` +
-          `Configure your personalized credentials or override keys via the Settings tab in the sidebar layout.`,
+        content: "We're having trouble connecting right now. Please check your connection and try again.",
         created_at: new Date().toISOString()
       };
       setMessages(prev => [...prev, fallbackAiMsg]);
