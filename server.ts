@@ -383,22 +383,19 @@ async function startServer() {
   // API 3: /api/conversations/:id/messages
   app.get("/api/conversations/:id/messages", async (req, res) => {
     const convId = req.params.id;
-
-    if (supabaseAdmin) {
-      try {
-        const { data, error } = await supabaseAdmin
-          .from("messages")
-          .select("id, conversation_id, role, content, created_at")
-          .eq("conversation_id", convId)
-          .order("created_at", { ascending: true });
-        if (!error && data) {
-          return res.json(data);
-        }
-      } catch (e) {
-        console.error("Supabase messages fetch error:", e);
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("messages")
+        .select("id, conversation_id, role, content, created_at")
+        .eq("conversation_id", convId)
+        .order("created_at", { ascending: true });
+      if (!error && data) {
+        return res.json(data);
       }
+      if (error) console.error("Supabase messages fetch error:", error.message);
+    } catch (e) {
+      console.error("Supabase messages fetch exception:", e);
     }
-
     // Local fallback
     const db = loadDatabase();
     const filtered = db.messages
@@ -739,14 +736,13 @@ async function startServer() {
       let title = message.substring(0, 30);
       if (title.length >= 30) title += "...";
 
-      // Ensure user exists in Supabase (best effort, non-blocking)
+      // Ensure user exists in Supabase (awaited)
       supabaseAdmin.from("users").upsert(
         { external_id: user_id },
         { onConflict: "external_id" }
       ).then(({ error }) => {
         if (error) console.error("User upsert error:", error.message);
       });
-      let supabaseInternalUserId: string | null = null;
 
       let conv = db.conversations.find((c) => c.id === activeConvId);
       if (!conv) {
@@ -758,39 +754,34 @@ async function startServer() {
           created_at: new Date().toISOString(),
         };
         db.conversations.push(conv);
-        // Save to Supabase — user_id stored as text, no FK constraint
-        supabaseAdmin.from("conversations").upsert({
+        // AWAIT the conversation save so messages don't race ahead
+        const { error: convErr } = await supabaseAdmin.from("conversations").upsert({
           id: activeConvId,
           user_id: user_id,
           title: title || "New Chat"
-        }).then(({ error }) => {
-          if (error) console.error("Supabase conv save error:", error.message);
-          else console.log("✅ Conversation saved to Supabase:", activeConvId);
         });
+        if (convErr) console.error("Supabase conv save error:", convErr.message);
+        else console.log("✅ Conversation saved to Supabase:", activeConvId);
         log("CONV_RESOLVE", `Allocated core cache sequence: ${activeConvId}`, "SUCCESS");
       }
 
-      // Save user message
+      // Save user message (awaited)
       const userMsg: LocalMessage = {
-        id: `msg-${Math.random().toString(36).substring(2, 9)}`,
+        id: crypto.randomUUID ? crypto.randomUUID() : `msg-${Math.random().toString(36).substring(2, 9)}`,
         conversation_id: activeConvId,
         role: "user",
         content: message,
         created_at: new Date().toISOString(),
       };
       db.messages.push(userMsg);
-      // Save to Supabase
-      if (supabaseAdmin) {
-        supabaseAdmin.from("messages").insert({
-          id: userMsg.id,
-          conversation_id: activeConvId,
-          role: "user",
-          content: message
-        }).then(({ error }) => {
-          if (error) console.error("Supabase user msg save error:", error.message);
-          else console.log("✅ User message saved to Supabase");
-        });
-      }
+      const { error: userMsgErr } = await supabaseAdmin.from("messages").insert({
+        id: userMsg.id,
+        conversation_id: activeConvId,
+        role: "user",
+        content: message
+      });
+      if (userMsgErr) console.error("Supabase user msg save error:", userMsgErr.message);
+      else console.log("✅ User message saved to Supabase");
       log("INPUT_STORE", "Buffered instruction stack to localized persistence", "INFO");
 
       const msgLower = message.toLowerCase();
@@ -833,9 +824,9 @@ async function startServer() {
           `  uvicorn backend.app:app --reload --port 8000`;
       }
 
-      // Persist AI Answer
+      // Persist AI Answer (awaited)
       const aiMsg: LocalMessage = {
-        id: `msg-${Math.random().toString(36).substring(2, 9)}`,
+        id: crypto.randomUUID ? crypto.randomUUID() : `msg-${Math.random().toString(36).substring(2, 9)}`,
         conversation_id: activeConvId,
         role: "assistant",
         content: answerText,
@@ -843,17 +834,14 @@ async function startServer() {
       };
       db.messages.push(aiMsg);
       saveDatabase(db);
-      // Save AI message to Supabase
-      if (supabaseAdmin) {
-        supabaseAdmin.from("messages").insert({
-          id: aiMsg.id,
-          conversation_id: activeConvId,
-          role: "assistant",
-          content: answerText
-        }).then(({ error }) => {
-          if (error) console.error("Supabase AI msg save error:", error.message);
-        });
-      }
+      const { error: aiMsgErr } = await supabaseAdmin.from("messages").insert({
+        id: aiMsg.id,
+        conversation_id: activeConvId,
+        role: "assistant",
+        content: answerText
+      });
+      if (aiMsgErr) console.error("Supabase AI msg save error:", aiMsgErr.message);
+      else console.log("✅ AI message saved to Supabase");
       log("OUTPUT_STORE", "Answer registered. Cache state synchronized.", "SUCCESS");
 
       res.json({
