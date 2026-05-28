@@ -7,8 +7,6 @@ export default function PlansPricing() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState<{ name: string; price: number } | null>(null);
   
-  const [checkoutCardName, setCheckoutCardName] = useState("");
-  const [checkoutCardNum, setCheckoutCardNum] = useState("");
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
 
   // Sync loaded plan level from localStorage
@@ -35,50 +33,39 @@ export default function PlansPricing() {
 
   const handleConfirmCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!checkoutCardName.trim() || !checkoutCardNum.trim()) {
-      alert("Please specify card validation coordinates.");
-      return;
-    }
-
+    if (!checkoutPlan) return;
     setCheckoutSuccess(true);
-    
     try {
-      if (checkoutPlan) {
-        const resp = await fetch("/api/payment/checkout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            tierName: checkoutPlan.name,
-            successUrl: window.location.origin + "/?stripe_checkout_success=true&session_id={CHECKOUT_SESSION_ID}",
-            cancelUrl: window.location.origin + "/"
-          })
-        });
-        if (resp.ok) {
-          const data = await resp.json();
-          if (data.stripeSessionUrl) {
-            // Real Stripe session found, redirect to secure checkout!
-            window.location.href = data.stripeSessionUrl;
-            return;
-          }
-
-          setActivePlan(data.tier);
-          localStorage.setItem("masidy_active_tier", data.tier);
-          
-          // Dispatch global custom event to signal other components to reload tier data if needed
-          window.dispatchEvent(new CustomEvent("masidy_tier_updated", { detail: data.tier }));
+      // Get current user ID from localStorage
+      const userId = localStorage.getItem("masidy_anon_id") || "anon";
+      const resp = await fetch("/api/payment/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          tierName: checkoutPlan.name,
+          user_id: userId,
+          successUrl: window.location.origin + "/?stripe_checkout_success=true&session_id={CHECKOUT_SESSION_ID}",
+          cancelUrl: window.location.origin + "/"
+        })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.stripeSessionUrl) {
+          window.location.href = data.stripeSessionUrl;
+          return;
         }
+        setActivePlan(data.tier);
+        localStorage.setItem("masidy_active_tier", data.tier);
+        window.dispatchEvent(new CustomEvent("masidy_tier_updated", { detail: data.tier }));
       }
     } catch (err) {
       console.error("Payment sync failed:", err);
     }
-
     setTimeout(() => {
       setCheckoutSuccess(false);
       setShowCheckout(false);
       setCheckoutPlan(null);
-      setCheckoutCardName("");
-      setCheckoutCardNum("");
-    }, 1800);
+    }, 1500);
   };
 
   const plans = [
@@ -296,92 +283,44 @@ export default function PlansPricing() {
       {/* 3. Checkout Simulation Drawer Overlay */}
       {showCheckout && checkoutPlan && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 text-left font-sans select-none">
-          <div className="w-full max-w-sm bg-white dark:bg-[#0c0c0e] rounded-2xl border border-neutral-200 dark:border-zinc-800 p-6 shadow-2xl overflow-hidden space-y-4">
-            
+          <div className="w-full max-w-sm bg-white dark:bg-[#0c0c0e] rounded-2xl border border-neutral-200 dark:border-zinc-800 p-6 shadow-2xl space-y-4">
             <div className="border-b border-neutral-100 dark:border-zinc-800 pb-3">
-              <h3 className="text-sm font-bold text-neutral-800 dark:text-zinc-100">Secure Masidy Subscription Bridge</h3>
-              <p className="text-xs text-zinc-500 dark:text-zinc-455">Upgrade to {checkoutPlan.name} instantly</p>
+              <h3 className="text-sm font-bold text-neutral-800 dark:text-zinc-100">Upgrade to {checkoutPlan.name}</h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">You'll be redirected to Stripe's secure checkout page.</p>
             </div>
-
-            <form onSubmit={handleConfirmCheckout} className="space-y-4">
-              
-              {/* Info matrix */}
-              <div className="p-3.5 rounded-xl bg-neutral-50 dark:bg-zinc-900 border border-neutral-200 dark:border-zinc-800 text-xs font-medium space-y-1">
-                 <div className="flex justify-between">
-                    <span className="text-neutral-500 dark:text-zinc-400">Plan level Selected:</span>
-                    <span className="text-neutral-900 dark:text-zinc-100 font-bold uppercase">{checkoutPlan.name}</span>
-                 </div>
-                 <div className="flex justify-between">
-                    <span className="text-neutral-500 dark:text-zinc-400">Billing frequency:</span>
-                    <span className="text-neutral-900 dark:text-zinc-100 font-bold uppercase">{billingPeriod}</span>
-                 </div>
-                 <div className="flex justify-between pt-1 border-t border-neutral-200 dark:border-zinc-800 font-bold text-neutral-900 dark:text-white mt-1">
-                    <span>Target total due:</span>
-                    <span>${checkoutPlan.price}.00 / mo</span>
-                 </div>
+            <div className="p-3.5 rounded-xl bg-neutral-50 dark:bg-zinc-900 border border-neutral-200 dark:border-zinc-800 text-xs font-medium space-y-1">
+              <div className="flex justify-between">
+                <span className="text-neutral-500 dark:text-zinc-400">Plan:</span>
+                <span className="text-neutral-900 dark:text-zinc-100 font-bold uppercase">{checkoutPlan.name}</span>
               </div>
-
-              {/* Input Card name */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] text-zinc-550 dark:text-zinc-400 font-bold uppercase block tracking-wider">
-                   Owner Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={checkoutCardName}
-                  onChange={(e) => setCheckoutCardName(e.target.value)}
-                  placeholder="e.g. Admiral Masidy"
-                  className="w-full bg-neutral-50 dark:bg-zinc-900 border border-neutral-200 dark:border-zinc-800 focus:border-neutral-400 dark:focus:border-zinc-650 rounded-lg text-xs py-2 px-3 focus:outline-none focus:ring-0 text-zinc-800 dark:text-zinc-100"
-                />
+              <div className="flex justify-between">
+                <span className="text-neutral-500 dark:text-zinc-400">Billing:</span>
+                <span className="text-neutral-900 dark:text-zinc-100 font-bold uppercase">{billingPeriod}</span>
               </div>
-
-              {/* Input Card credit number */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] text-zinc-550 dark:text-zinc-400 font-bold uppercase block tracking-wider">
-                   Credit Card Number
-                </label>
-                <input
-                  type="text"
-                  maxLength={19}
-                  required
-                  value={checkoutCardNum}
-                  onChange={(e) => setCheckoutCardNum(e.target.value)}
-                  placeholder="4000 1234 5678 9010"
-                  className="w-full bg-neutral-50 dark:bg-zinc-900 border border-neutral-200 dark:border-zinc-800 focus:border-neutral-400 dark:focus:border-zinc-655 rounded-lg text-xs py-2 px-3 focus:outline-none focus:ring-0 text-zinc-800 dark:text-zinc-100"
-                />
+              <div className="flex justify-between pt-1 border-t border-neutral-200 dark:border-zinc-800 font-bold text-neutral-900 dark:text-white mt-1">
+                <span>Total:</span>
+                <span>${checkoutPlan.price}.00 / mo</span>
               </div>
-
-              {/* Prompt controllers */}
-              <div className="flex space-x-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCheckout(false)}
-                  className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-205 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold text-xs rounded-lg cursor-pointer text-center"
-                >
+            </div>
+            <form onSubmit={handleConfirmCheckout} className="space-y-3">
+              <div className="flex space-x-2">
+                <button type="button" onClick={() => setShowCheckout(false)}
+                  className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold text-xs rounded-lg cursor-pointer">
                   Cancel
                 </button>
-
                 {checkoutSuccess ? (
-                  <button
-                    disabled
-                    className="flex-1 py-2 bg-emerald-600 dark:bg-emerald-700 text-white font-bold text-xs rounded-lg flex items-center justify-center space-x-1"
-                  >
-                     <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping"></span>
-                     <span>Syncing...</span>
+                  <button disabled className="flex-1 py-2 bg-emerald-600 text-white font-bold text-xs rounded-lg flex items-center justify-center space-x-1">
+                    <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping"></span>
+                    <span>Redirecting...</span>
                   </button>
                 ) : (
-                  <button
-                    type="submit"
-                    className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 dark:bg-indigo-750 text-white font-bold text-xs rounded-lg cursor-pointer text-center"
-                  >
-                    Confirm Access
+                  <button type="submit"
+                    className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg cursor-pointer">
+                    Continue to Stripe →
                   </button>
                 )}
               </div>
-
             </form>
-
           </div>
         </div>
       )}

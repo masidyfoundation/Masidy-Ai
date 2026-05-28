@@ -267,7 +267,7 @@ def get_groq_model(model_id: str, tier: str = "FREE") -> str:
     """Get actual Groq LLM model name for a Masidy model"""
     model = get_model(model_id, tier)
     groq_model_key = model.get("groq_model", "llama-3.1-8b")
-    return GROQ_MODELS.get(groq_model_key, "llama3-8b-8192")
+    return GROQ_MODELS.get(groq_model_key, "llama-3.1-8b-instant")
 
 def list_models() -> list:
     """List all Masidy model definitions"""

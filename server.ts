@@ -475,13 +475,14 @@ async function startServer() {
        client.checkout.sessions.retrieve(String(session_id))
          .then(session => {
             const tierName = session.metadata?.tierName;
+            const userExternalId = session.metadata?.user_external_id || "anon";
             if (tierName) {
               const db = loadDatabase();
-              let user = db.users.find(u => u.external_id === "admin_user");
+              let user = db.users.find(u => u.external_id === userExternalId);
               if (!user) {
                 user = {
-                  id: "u-admin",
-                  external_id: "admin_user",
+                  id: `u-${Math.random().toString(36).substring(2, 9)}`,
+                  external_id: userExternalId,
                   created_at: new Date().toISOString()
                 };
                 db.users.push(user);
@@ -591,60 +592,24 @@ async function startServer() {
     `);
   });
 
-  // OAuth callback receiver page
+  // OAuth callback receiver — Supabase handles real auth, this just closes the popup
   app.get(["/auth/callback", "/auth/callback/"], (req, res) => {
-    const { code, username = "Masidy User", provider = "Google" } = req.query;
-
-    const db = loadDatabase();
-    let existingAdmin = db.users.find(u => u.external_id === "admin_user");
-    if (existingAdmin) {
-      existingAdmin.username = String(username);
-      existingAdmin.avatar_color = provider === "Google" ? "indigo" : "neutral";
-    } else {
-      existingAdmin = {
-        id: "u-admin",
-        external_id: "admin_user",
-        created_at: new Date().toISOString(),
-        username: String(username),
-        avatar_color: provider === "Google" ? "indigo" : "neutral"
-      };
-      db.users.push(existingAdmin);
-    }
-    saveDatabase(db);
-
-    res.send(`
-      <html>
-        <head>
-          <title>Session Active</title>
-          <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet font-sans">
-        </head>
-        <body class="bg-zinc-950 text-white flex flex-col items-center justify-center min-h-screen text-center p-6">
-          <div class="space-y-3">
-             <div class="w-12 h-12 rounded-full bg-emerald-600 flex items-center justify-center mx-auto shadow-md">
-               <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-               </svg>
-             </div>
-             <p class="text-xs font-bold font-sans tracking-wide">SSO ACCESS AUTHORIZED</p>
-             <p class="text-[10px] text-zinc-500 font-mono">Syncing credentials to iframe wrapper... closing windows.</p>
-          </div>
-          <script>
-            if (window.opener) {
-              window.opener.postMessage({ 
-                type: 'OAUTH_AUTH_SUCCESS', 
-                username: '${username}',
-                avatarColor: '${provider === 'Google' ? 'indigo' : 'neutral'}'
-              }, '*');
-              setTimeout(() => {
-                window.close();
-              }, 800);
-            } else {
-              window.location.href = '/';
-            }
-          </script>
-        </body>
-      </html>
-    `);
+    // Supabase auth handles the real session via detectSessionInUrl
+    // This page just closes the popup window if opened as one
+    res.send(`<!DOCTYPE html>
+<html>
+<head><title>Auth Complete</title></head>
+<body>
+<script>
+  if (window.opener) {
+    window.opener.postMessage({ type: 'SUPABASE_AUTH_COMPLETE' }, window.location.origin);
+    setTimeout(() => window.close(), 500);
+  } else {
+    window.location.href = '/';
+  }
+</script>
+</body>
+</html>`);
   });
 
   // System Rate-limiting telemetry status block
@@ -699,9 +664,9 @@ async function startServer() {
         log("USER_RESOLVE", `Identity initialized. Host profile generated ID: ${user.id}`, "SUCCESS");
       }
 
-      // ACTIVE RATE LIMIT SYSTEM CHECK
+      // ACTIVE RATE LIMIT SYSTEM CHECK — use real user_id not shared IP
       const activeTier = user.tier || "Free Standard";
-      const limitStatus = checkRateLimit("admin_user_ip", activeTier);
+      const limitStatus = checkRateLimit(user_id, activeTier);
       log("RATE_LIMIT_CHECK", `Identified subscription level: ${activeTier}. Remaining credits: ${limitStatus.remaining}/${limitStatus.limit}`, "INFO");
 
       if (!limitStatus.allowed) {
@@ -714,14 +679,15 @@ async function startServer() {
         return;
       }
 
-      // Find or create conversation
+      // Find or create conversation — use proper UUID
       let activeConvId = conversation_id;
       let title = message.substring(0, 30);
       if (title.length >= 30) title += "...";
 
       let conv = db.conversations.find((c) => c.id === activeConvId);
       if (!conv) {
-        activeConvId = `conv-${Math.random().toString(36).substring(2, 9)}`;
+        // Generate a proper UUID so Supabase accepts it
+        activeConvId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
         conv = {
           id: activeConvId,
           user_id: user.id,
