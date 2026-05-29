@@ -1,322 +1,302 @@
-import React, { useState } from "react";
-import { Search, Loader2, Sparkles, FileText, Download, CheckCircle, Database, Network, BookOpen, Share2 } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { Search, Loader2, FileText, Download, ExternalLink, Globe, Zap, BookOpen } from "lucide-react";
 import Markdown from "react-markdown";
+
+interface Source {
+  title: string;
+  url: string;
+}
+
+interface ResearchResult {
+  query: string;
+  report: string;
+  sources: Source[];
+  provider: string;
+  result_count: number;
+}
+
+const DEPTH_OPTIONS = [
+  { id: "Quick", label: "Quick", desc: "~30s", detail: "Fast overview" },
+  { id: "Thorough", label: "Thorough", desc: "~60s", detail: "Detailed analysis" },
+  { id: "Exhaustive", label: "Exhaustive", desc: "~2min", detail: "Deep dive" },
+];
+
+const EXAMPLE_QUERIES = [
+  "Latest developments in artificial intelligence 2026",
+  "How does quantum computing work",
+  "Best practices for building a startup",
+  "Climate change solutions and technologies",
+  "Future of electric vehicles",
+];
 
 export default function DeepResearch() {
   const [query, setQuery] = useState("");
   const [depth, setDepth] = useState("Thorough");
-  const [sourceFocus, setSourceFocus] = useState("Web & News Index");
-  
-  const [isCrawling, setIsCrawling] = useState(false);
-  const [stepIndex, setStepIndex] = useState(0);
-  const [progressLogs, setProgressLogs] = useState<string[]>([]);
-  const [generatedReport, setGeneratedReport] = useState<string | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [result, setResult] = useState<ResearchResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [step, setStep] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const crawlSteps = [
-    { name: "PROPOSAL_VALIDATOR", desc: "Constructing multi-faceted semantic query branches..." },
-    { name: "CRAWL_TRIGGER", desc: "Querying global indexing servers & web scraper clusters..." },
-    { name: "SCRAPE_REDUCER", desc: "Parsing HTML responses from DuckDuckGo, Wikipedia & arXiv Academic indices..." },
-    { name: "FACT_RESOLVER", desc: "Filtering high-density factual blocks, removing duplicates & conflicting reports..." },
-    { name: "TAXONOMY_SYNTH", desc: "Coaxing structured chapters, summary matrices and methodology indices..." },
-    { name: "REPORT_PUBLISH", desc: "Baking PDF/Markdown monograph layout with citation indexes..." }
-  ];
+  const handleSearch = async (customQuery?: string) => {
+    const finalQuery = customQuery || query;
+    if (!finalQuery.trim()) { inputRef.current?.focus(); return; }
 
-  const handleStartCrawl = () => {
-    if (!query.trim()) return alert("Please specify a target query for Masidy Deep Research.");
-    setIsCrawling(true);
-    setGeneratedReport(null);
-    setProgressLogs([]);
-    setStepIndex(0);
+    setIsSearching(true);
+    setResult(null);
+    setError(null);
+    if (customQuery) setQuery(customQuery);
 
-    // Dynamic sequence simulation
-    crawlSteps.forEach((step, idx) => {
-      setTimeout(() => {
-        setStepIndex(idx + 1);
-        setProgressLogs(prev => [
-          ...prev, 
-          `[${new Date().toLocaleTimeString()}] ${step.name}: Successfully finished: ${step.desc}`
-        ]);
-        
-        if (idx === crawlSteps.length - 1) {
-          setIsCrawling(false);
-          // Set custom themed report matches
-          setGeneratedReport(makeCustomReport(query, depth, sourceFocus));
-        }
-      }, (idx + 1) * 750);
-    });
+    try {
+      setStep("Searching the web...");
+      await new Promise(r => setTimeout(r, 500));
+      setStep("Gathering sources and content...");
+
+      const resp = await fetch("/api/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: finalQuery, depth }),
+      });
+
+      setStep("Synthesizing research report...");
+      const data = await resp.json();
+
+      if (data.success && data.report) {
+        setResult(data);
+      } else {
+        setError(data.report || "No results found. Try a different search term.");
+      }
+    } catch (e) {
+      setError("Search is temporarily unavailable. Please try again.");
+    } finally {
+      setIsSearching(false);
+      setStep("");
+    }
   };
 
-  const makeCustomReport = (title: string, rDepth: string, focus: string) => {
-    return `
-# Masidy Analytics: Deep Investigation Report
-**Topic**: *${title}*  
-**Operational Parameters**: Depth: ${rDepth} | Focus Layer: ${focus}  
-**Investigation Timestamp**: ${new Date().toLocaleDateString()} | UTC Trace: SECURE_SYNC  
-
----
-
-## 1. Executive Summary
-Following a detailed semantic search routing of multiple global database nodes and high-density indexing logs, this research dossier consolidates comprehensive metrics, current best practices, and systematic approaches related to **${title}**.
-
-Throughout our analysis, standard metrics reveal several critical success pillars:
-- **Redundancy and Scaling**: Modern high-capacity clusters require strict geographic data caching.
-- **Access Latency optimizations**: Integrating multi-tier Cache layers resolves read-heavy bottlenecks.
-- **Security Posture integration**: Applying strict endpoint access configurations preserves data sanitization.
-
----
-
-## 2. Investigation Methodology
-To optimize the precision of this monograph, the research engine executed a multi-layered consensus protocol on target references:
-
-| Phase Metric | Target Nodes Checked | Filter Factor | Confidence Ratio |
-| :--- | :--- | :--- | :--- |
-| **Primary Index Crawl** | 127 Servers | Deduplication match | 98.4% |
-| **Secondary Refinement** | 45 Papers | High-density citations | 96.2% |
-| **Fact Re-validation** | 18 Databases | Consistency crosscheck | 99.1% |
-
----
-
-## 3. High-Fidelity Consensuses & Findings
-Our analysis of the scraping indexes suggests several definitive engineering recommendations for **${title}**:
-
-1. **De-couple State dependencies**: Treat global databases with strict boundary separation to avoid cascade failures.
-2. **Apply Multi-index routing**: Implement load-balancing proxies configured with fallback priorities to guarantee 99.999% global state availability.
-3. **Establish Real-Time Telemetry Logging**: Enable fine-grained stream metrics mapping CPU usage, network I/O, and replication intervals to recognize spikes immediately.
-
----
-
-## 4. Cited References & Target Indexes
-- *Masidy Core Scientific consensus index (Vol 12, P. 45-67)*
-- *Global Data Systems & Architectural blueprints database, 2026*
-- *Academic papers on consensus patterns (arXiv:5621.1982v2)*
-    `;
+  const handleDownload = () => {
+    if (!result) return;
+    const content = `# Research Report: ${result.query}\n\n${result.report}\n\n## Sources\n${result.sources.map(s => `- [${s.title}](${s.url})`).join("\n")}`;
+    const blob = new Blob([content], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `masidy-research-${Date.now()}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
-    <div id="deep-research-workspace" className="flex-1 bg-white dark:bg-[#0c0c0e] flex flex-col md:flex-row h-full overflow-hidden font-sans transition-colors duration-150">
-      
-      {/* 1. Configuration Panel (Left side) */}
-      <div className="w-full md:w-80 border-r border-neutral-200 dark:border-zinc-800 bg-neutral-51 dark:bg-[#0f0f11] flex flex-col h-full shrink-0 select-none pb-12 overflow-y-auto">
-        
+    <div className="flex-1 bg-white dark:bg-[#0c0c0e] flex flex-col md:flex-row h-full overflow-hidden font-sans">
+
+      {/* Left panel */}
+      <div className="w-full md:w-72 border-r border-neutral-200 dark:border-zinc-800 bg-neutral-50 dark:bg-zinc-900/40 flex flex-col shrink-0 overflow-y-auto">
+
         {/* Header */}
-        <div className="p-4 border-b border-neutral-200 dark:border-zinc-805">
-          <div className="flex items-center space-x-2">
-            <div className="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-              <Search className="w-4 h-4" />
+        <div className="p-4 border-b border-neutral-200 dark:border-zinc-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm">
+              <Search className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-neutral-800 dark:text-zinc-100 font-sans">Masidy Deep Research</h3>
-              <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">Auto-Crawler Model: DeepSearch 1.4</p>
+              <h3 className="text-sm font-bold text-neutral-900 dark:text-zinc-100">Masidy Deep Research</h3>
+              <p className="text-[10px] text-zinc-500 dark:text-zinc-400">Real web search · AI synthesis</p>
             </div>
           </div>
         </div>
 
-        {/* Configuration sliders */}
-        <div className="p-4 space-y-5">
-          
-          {/* Depth selector */}
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-semibold text-neutral-500 dark:text-zinc-400 uppercase tracking-wider block">
-              Search Crawl Depth
-            </label>
-            <div className="grid grid-cols-3 gap-1.5">
-              {[
-                { name: "Quick", time: "1-2 mins" },
-                { name: "Thorough", time: "3-5 mins" },
-                { name: "Exhaustive", time: "10+ mins" }
-              ].map((opt) => (
+        <div className="p-4 space-y-5 flex-1">
+
+          {/* Depth */}
+          <div className="space-y-2">
+            <label className="text-[11px] font-bold text-neutral-500 dark:text-zinc-400 uppercase tracking-wider block">Research Depth</label>
+            <div className="space-y-1.5">
+              {DEPTH_OPTIONS.map((opt) => (
                 <button
-                  key={opt.name}
-                  type="button"
-                  onClick={() => setDepth(opt.name)}
-                  className={`p-2 rounded-xl text-center transition-all border cursor-pointer ${
-                    depth === opt.name
-                      ? "bg-neutral-900 dark:bg-zinc-100 border-neutral-900 dark:border-zinc-100 text-white dark:text-black font-semibold"
-                      : "bg-white dark:bg-zinc-805 text-neutral-600 dark:text-zinc-300 border-neutral-200 dark:border-zinc-700 hover:bg-neutral-50 dark:hover:bg-zinc-750"
+                  key={opt.id}
+                  onClick={() => setDepth(opt.id)}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer border ${
+                    depth === opt.id
+                      ? "bg-black dark:bg-white text-white dark:text-black border-black dark:border-white shadow-sm"
+                      : "bg-white dark:bg-zinc-800 text-neutral-600 dark:text-zinc-300 border-neutral-200 dark:border-zinc-700 hover:border-neutral-300"
                   }`}
                 >
-                  <span className="block text-xs">{opt.name}</span>
-                  <span className="block text-[8px] text-neutral-500 dark:text-zinc-405 opacity-80 mt-0.5">{opt.time}</span>
+                  <span className="font-bold">{opt.label}</span>
+                  <div className="text-right">
+                    <span className={`block text-[10px] ${depth === opt.id ? "opacity-70" : "text-zinc-400"}`}>{opt.desc}</span>
+                    <span className={`block text-[9px] ${depth === opt.id ? "opacity-60" : "text-zinc-400"}`}>{opt.detail}</span>
+                  </div>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Sources Focus Selection */}
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-semibold text-neutral-500 dark:text-zinc-400 uppercase tracking-wider block">
-              Global Source Focuses
-            </label>
-            <div className="space-y-2">
-              {[
-                { name: "Web & News Index", icon: Database },
-                { name: "Academic Patents & arXiv", icon: BookOpen },
-                { name: "Technical Documentation Labs", icon: Network }
-              ].map((src) => {
-                const SrcIcon = src.icon;
-                const isSelected = sourceFocus === src.name;
-                return (
-                  <button
-                    key={src.name}
-                    type="button"
-                    onClick={() => setSourceFocus(src.name)}
-                    className={`w-full flex items-center space-x-3 p-3 rounded-xl text-left text-xs transition-colors border cursor-pointer ${
-                      isSelected
-                        ? "bg-indigo-50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-900 text-indigo-900 dark:text-indigo-300 font-normal"
-                        : "bg-white dark:bg-zinc-800 text-neutral-600 dark:text-zinc-300 border-neutral-200 dark:border-zinc-700 hover:bg-neutral-50 dark:hover:bg-zinc-750"
-                    }`}
-                  >
-                    <SrcIcon className={`w-4 h-4 shrink-0 ${isSelected ? "text-indigo-600 dark:text-indigo-400" : "text-zinc-500 dark:text-zinc-405"}`} />
-                    <span className="font-medium">{src.name}</span>
-                  </button>
-                );
-              })}
+          {/* Example queries */}
+          <div className="space-y-2">
+            <label className="text-[11px] font-bold text-neutral-500 dark:text-zinc-400 uppercase tracking-wider block">Try These</label>
+            <div className="space-y-1.5">
+              {EXAMPLE_QUERIES.map((q, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleSearch(q)}
+                  disabled={isSearching}
+                  className="w-full text-left px-3 py-2 rounded-lg bg-white dark:bg-zinc-800 border border-neutral-200 dark:border-zinc-700 hover:border-indigo-300 dark:hover:border-indigo-700 text-xs text-neutral-600 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {q}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Legal disclaimer capsule */}
-          <div className="pt-3 border-t border-neutral-200 dark:border-zinc-800 text-[10.5px] text-neutral-500 dark:text-zinc-400 leading-relaxed space-y-1 bg-neutral-100/35 dark:bg-zinc-900/35 p-3.5 rounded-xl border border-neutral-200/50 dark:border-zinc-800/50">
-             <span className="font-bold text-neutral-700 dark:text-zinc-300 block text-[11px]">CRAWLER SAFETY PROTOCOLS</span>
-             <p>All Masidy deep audits adhere to robots.txt, scraping data asynchronously using sandboxed proxy addresses without logging credentials.</p>
+          {/* Info */}
+          <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 text-xs text-indigo-700 dark:text-indigo-400 space-y-1">
+            <div className="flex items-center gap-1.5 font-bold">
+              <Globe className="w-3.5 h-3.5" />
+              <span>Real Web Search</span>
+            </div>
+            <p className="text-[10px] leading-relaxed opacity-80">Searches the live web and synthesizes results into a structured report with sources.</p>
           </div>
 
         </div>
-
       </div>
 
-      {/* 2. Live Scraper Monitor & Finished Dossier Display (Right) */}
-      <div className="flex-1 bg-neutral-50/50 dark:bg-[#0c0c0e] p-4 md:p-8 flex flex-col overflow-y-auto">
-        
-        {isCrawling ? (
-          /* Lively Step-by-Step progress logs output UI */
-          <div className="flex-1 flex flex-col justify-center max-w-2xl mx-auto w-full space-y-6">
-            
-            <div className="text-center space-y-3 p-6 bg-white dark:bg-zinc-900 border border-neutral-200 dark:border-zinc-800 rounded-3xl shadow-xs">
-              
-              <Loader2 className="w-10 h-10 text-indigo-600 dark:text-indigo-400 animate-spin mx-auto" />
-              <h3 className="text-lg font-bold text-neutral-800 dark:text-zinc-100 font-sans">Active Research Pipeline Running</h3>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-md mx-auto leading-relaxed">
-                Masidy has instantiated research threads targeting primary, secondary, and cross-reference servers worldwide. Evaluating references...
-              </p>
+      {/* Right panel */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
 
-              {/* Steps checklist indicators */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 pt-4 text-left font-sans">
-                {crawlSteps.map((step, index) => {
-                  const isActive = stepIndex === index;
-                  const isCompleted = stepIndex > index;
-                  
-                  return (
-                    <div 
-                      key={index}
-                      className={`p-3 rounded-xl border transition-all text-xs flex flex-col justify-between ${
-                        isCompleted 
-                          ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300" 
-                          : isActive 
-                          ? "bg-indigo-50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-900 text-indigo-800 dark:text-indigo-300 animate-pulse" 
-                          : "bg-neutral-55 dark:bg-zinc-800 border-neutral-200 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500"
-                      }`}
-                    >
-                      <span className="font-mono text-[9px] font-bold block">{step.name}</span>
-                      <span className="text-[10px] leading-snug mt-1 font-medium">{step.desc}</span>
-                    </div>
-                  );
-                })}
+        {/* Main content */}
+        <div className="flex-1 overflow-y-auto p-6">
+
+          {isSearching ? (
+            <div className="flex flex-col items-center justify-center h-full space-y-6 max-w-md mx-auto text-center">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg">
+                <Loader2 className="w-8 h-8 text-white animate-spin" />
               </div>
-
+              <div>
+                <p className="text-sm font-bold text-neutral-800 dark:text-zinc-100">Researching...</p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{step}</p>
+              </div>
+              <div className="w-48 h-1.5 bg-neutral-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-indigo-500 to-violet-600 rounded-full animate-pulse w-2/3" />
+              </div>
             </div>
 
-            {/* Scrolling terminal live pipeline console feed */}
-            <div className="bg-[#0c0d11] text-zinc-300 font-mono text-[11px] h-48 rounded-2xl border border-neutral-800 p-4 overflow-y-auto space-y-1.5 shadow-inner">
-               <span className="text-zinc-500 tracking-wider block font-bold mb-1">// LIVE SCANNER PORT PIPELINE LOGS</span>
-               {progressLogs.map((log, index) => (
-                  <div key={index} className="leading-relaxed">
-                     <span className="text-emerald-400 font-bold">&gt;</span> {log}
-                  </div>
-               ))}
-               <div className="text-indigo-400 animate-pulse font-normal">System crawling active. Ready for updates...</div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center h-full space-y-4 max-w-md mx-auto text-center">
+              <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+                <Search className="w-6 h-6 text-red-400" />
+              </div>
+              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+              <button onClick={() => handleSearch()} className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black text-xs font-bold rounded-lg cursor-pointer">
+                Try Again
+              </button>
             </div>
 
-          </div>
-        ) : generatedReport ? (
-          /* Finished generated Report Dossier */
-          <div className="flex-1 max-w-3xl mx-auto w-full bg-white dark:bg-zinc-900 border border-neutral-200 dark:border-zinc-800 p-6 md:p-10 rounded-3xl shadow-sm space-y-6 animate-fade-in text-left pb-16">
-            
-            {/* Headers metadata block */}
-            <div className="flex items-center justify-between border-b border-neutral-100 dark:border-zinc-810 pb-4">
-              <div className="flex items-center space-x-2">
-                <FileText className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-405 uppercase tracking-widest">RESEARCH DOSSIER ACTIVATED</span>
-              </div>
+          ) : result ? (
+            <div className="max-w-3xl mx-auto space-y-6">
 
-              <div className="flex items-center space-x-2">
+              {/* Report header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Research Report</span>
+                  <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold rounded-full">
+                    {result.result_count} sources
+                  </span>
+                </div>
                 <button
-                  onClick={() => alert("Dossier shared successfully via local sandbox reference link.")}
-                  className="p-1.5 hover:bg-neutral-100 dark:hover:bg-zinc-800 rounded text-neutral-500 dark:text-zinc-400 cursor-pointer"
-                  title="Share Report"
-                >
-                  <Share2 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => alert("Initiating print or pdf export module. Verified secure download.")}
-                  className="flex items-center space-x-1.5 py-1.5 px-3 bg-neutral-900 dark:bg-zinc-100 text-white dark:text-black rounded-lg text-xs font-bold hover:bg-neutral-805 dark:hover:bg-neutral-200 cursor-pointer transition-colors"
+                  onClick={handleDownload}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-black dark:bg-white text-white dark:text-black text-xs font-bold rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Download Dossier</span>
+                  Download
                 </button>
               </div>
+
+              {/* Report content */}
+              <div className="bg-white dark:bg-zinc-900 border border-neutral-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
+                <div className="prose dark:prose-invert max-w-none text-sm">
+                  <Markdown>{result.report}</Markdown>
+                </div>
+              </div>
+
+              {/* Sources */}
+              {result.sources.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-xs font-bold text-neutral-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5" />
+                    Sources ({result.sources.length})
+                  </h3>
+                  <div className="grid grid-cols-1 gap-2">
+                    {result.sources.map((source, i) => (
+                      <a
+                        key={i}
+                        href={source.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 p-3 bg-white dark:bg-zinc-900 border border-neutral-200 dark:border-zinc-800 rounded-xl hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors group"
+                      >
+                        <div className="w-6 h-6 rounded-lg bg-neutral-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
+                          <Globe className="w-3.5 h-3.5 text-neutral-400 dark:text-zinc-500" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-neutral-800 dark:text-zinc-200 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{source.title}</p>
+                          <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">{source.url}</p>
+                        </div>
+                        <ExternalLink className="w-3.5 h-3.5 text-neutral-300 dark:text-zinc-600 group-hover:text-indigo-500 shrink-0 transition-colors" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
             </div>
 
-            {/* Custom elegant markdown body container */}
-            <div className="markdown-body p-1 font-sans">
-              <Markdown>{generatedReport}</Markdown>
-            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full space-y-8 max-w-lg mx-auto text-center">
+              <div className="space-y-3">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-violet-600/10 border border-indigo-200 dark:border-indigo-800/30 flex items-center justify-center mx-auto">
+                  <Search className="w-7 h-7 text-indigo-500 dark:text-indigo-400" />
+                </div>
+                <h2 className="text-xl font-bold text-neutral-800 dark:text-zinc-100">Research anything on the web</h2>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-sm mx-auto">
+                  Masidy searches the live web, gathers real sources, and synthesizes a comprehensive report — all in seconds.
+                </p>
+              </div>
 
-          </div>
-        ) : (
-          /* Welcome Landing Page */
-          <div className="flex-grow flex flex-col justify-center max-w-xl mx-auto w-full text-center space-y-6 select-none my-auto">
-            
-            <div className="w-14 h-14 bg-white dark:bg-zinc-900 border border-neutral-200 dark:border-zinc-800 text-indigo-600 dark:text-indigo-400 rounded-3xl flex items-center justify-center mx-auto shadow-xs">
-              <Search className="w-6 h-6" />
-            </div>
-
-            <div className="space-y-2">
-              <h2 className="text-2xl font-semibold text-neutral-805 dark:text-zinc-100 tracking-tight">
-                Instantiate Masidy Deep Search
-              </h2>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-md mx-auto leading-relaxed">
-                Empower your analysis by query-mapping web data archives, academic papers, and system consensus guidelines dynamically with high integrity summaries.
-              </p>
-            </div>
-
-            {/* Prompt input field */}
-            <div className="pt-2 max-w-md mx-auto w-full">
-              <div className="flex p-1.5 bg-white dark:bg-zinc-900 border border-neutral-200 dark:border-zinc-800 hover:border-neutral-250 dark:hover:border-zinc-700 focus-within:border-neutral-300 dark:focus-within:border-zinc-600 rounded-full shadow-xs transition-colors items-center pl-4">
-                
-                <input
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Insert research query (e.g. quantum computing consensus)"
-                  className="flex-1 bg-transparent border-none text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-zinc-500 text-sm focus:outline-none focus:ring-0 py-1"
-                />
-
-                <button
-                  onClick={handleStartCrawl}
-                  disabled={!query.trim()}
-                  className="px-5 py-2 rounded-full text-xs font-bold bg-[#10a37f] dark:bg-[#10a37f]/90 text-white enabled:hover:bg-[#0e8a6c] disabled:bg-neutral-100 dark:disabled:bg-zinc-800 disabled:text-neutral-400 dark:disabled:text-zinc-650 cursor-pointer transition-all shadow-xs shrink-0"
-                >
-                  Commence Research
-                </button>
-
+              <div className="flex items-center gap-4 text-xs text-zinc-400 dark:text-zinc-500">
+                <div className="flex items-center gap-1.5"><Globe className="w-3.5 h-3.5" /><span>Live web search</span></div>
+                <div className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /><span>AI synthesis</span></div>
+                <div className="flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5" /><span>Real sources</span></div>
               </div>
             </div>
+          )}
+        </div>
 
+        {/* Search input */}
+        <div className="p-4 border-t border-neutral-200 dark:border-zinc-800 bg-white dark:bg-[#0c0c0e]">
+          <div className="flex gap-2 max-w-3xl mx-auto">
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !isSearching && handleSearch()}
+              disabled={isSearching}
+              placeholder="Search anything — news, science, technology, history..."
+              className="flex-1 px-4 py-3 bg-neutral-50 dark:bg-zinc-900 border border-neutral-200 dark:border-zinc-700 rounded-xl text-sm text-neutral-900 dark:text-zinc-100 placeholder:text-neutral-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+            />
+            <button
+              onClick={() => handleSearch()}
+              disabled={isSearching || !query.trim()}
+              className="px-5 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl cursor-pointer transition-all shadow-sm flex items-center gap-2 shrink-0"
+            >
+              <Search className="w-4 h-4" />
+              <span className="hidden sm:inline">Research</span>
+            </button>
           </div>
-        )}
+        </div>
 
       </div>
-
     </div>
   );
 }

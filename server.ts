@@ -316,9 +316,24 @@ async function startServer() {
     });
   });
 
-  // API: /api/generate-image - Proxy to FastAPI backend
-  app.post("/api/generate-image", async (req, res) => {
+  // API: /api/search - Proxy to FastAPI backend for real web research
+  app.post("/api/search", async (req, res) => {
     try {
+      const backendRes = await fetch(`${BACKEND_URL}/search`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(req.body),
+        signal: AbortSignal.timeout(60000)
+      });
+      const data = await backendRes.json();
+      res.json(data);
+    } catch (err: any) {
+      res.json({ success: false, report: "Search is temporarily unavailable. Please try again.", sources: [] });
+    }
+  });
+
+  // API: /api/generate-image - Proxy to FastAPI backend
+  app.post("/api/generate-image", async (req, res) => {    try {
       const backendRes = await fetch(`${BACKEND_URL}/generate-image`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -53,6 +53,7 @@ class ImageRequest(BaseModel):
 class SearchRequest(BaseModel):
     query: str
     num_results: int = 5
+    depth: str = "Thorough"
 
 class FileAnalysisRequest(BaseModel):
     filename: str
@@ -134,10 +135,62 @@ async def generate_image_endpoint(request: ImageRequest):
 # ========== WEB RESEARCH ==========
 @app.post("/search")
 async def search_endpoint(request: SearchRequest):
-    """Search the web using DuckDuckGo"""
+    """Real web search using Tavily/DuckDuckGo + AI synthesis"""
     try:
-        result = await deep_research(request.query)
-        return result
+        # Get real web results
+        research_data = await deep_research(request.query, request.depth)
+
+        if not research_data.get("has_results"):
+            return {
+                "query": request.query,
+                "success": False,
+                "report": "No results found for this query. Please try a different search term.",
+                "sources": [],
+            }
+
+        # Build context from real results
+        results = research_data.get("results", [])
+        context_parts = []
+        sources = []
+
+        for i, r in enumerate(results[:6]):
+            content = r.get("content", "").strip()
+            title = r.get("title", "").strip()
+            url = r.get("url", "")
+            if content:
+                context_parts.append(f"Source {i+1}: {title}\n{content}")
+            if url and title:
+                sources.append({"title": title, "url": url})
+
+        context = "\n\n".join(context_parts)
+
+        # Use AI to synthesize a real report from the web results
+        from .logic.llama import call_llama
+        import datetime as dt
+
+        today = dt.datetime.utcnow().strftime("%B %d, %Y")
+        messages = [
+            {
+                "role": "system",
+                "content": f"You are a research assistant. Today is {today}. Write a comprehensive, well-structured research report based on the provided web search results. Use markdown formatting with headers, bullet points, and a sources section. Be factual and cite the sources provided."
+            },
+            {
+                "role": "user",
+                "content": f"Research topic: {request.query}\n\nWeb search results:\n{context}\n\nWrite a detailed research report with: Executive Summary, Key Findings, Analysis, and Sources."
+            }
+        ]
+
+        report = await call_llama(messages, "llama-3.1-8b-instant")
+
+        return {
+            "query": request.query,
+            "success": True,
+            "report": report,
+            "sources": sources,
+            "provider": research_data.get("provider", "Web"),
+            "result_count": research_data.get("result_count", 0),
+        }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail="Search is temporarily unavailable. Please try again.")
 
