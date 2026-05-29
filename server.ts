@@ -794,7 +794,7 @@ async function startServer() {
 
       log("MODEL_ROUTE", "Routing computational payload to FastAPI backend (Groq Llama)", "INFO");
       try {
-        // Proxy request to FastAPI backend — backend fetches its own history from Supabase
+        // Proxy request to FastAPI backend — longer timeout for cold starts
         const backendResponse = await fetch(`${BACKEND_URL}/api/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -804,7 +804,8 @@ async function startServer() {
             message,
             model: req.body.model || "free-base",
             tier: req.body.tier || "FREE"
-          })
+          }),
+          signal: AbortSignal.timeout(55000) // 55 second timeout for cold starts
         });
 
         if (!backendResponse.ok) {
@@ -816,7 +817,7 @@ async function startServer() {
         log("MODEL_ROUTE", "Inference complete, backend response decoded", "SUCCESS");
       } catch (err: any) {
         log("MODEL_ROUTE", `Backend unavailable: ${err.message}`, "WARNING");
-        answerText = "We're having trouble connecting right now. Please try again in a moment.";
+        answerText = "Masidy is starting up — this can take up to 30 seconds on first load. Please try again in a moment.";
       }
 
       // Persist AI Answer (awaited)
@@ -870,6 +871,16 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`[MASIDY TERMINAL ENGINE] Gateway alive on http://localhost:${PORT}`);
+    
+    // Keep backend warm — ping every 10 minutes to prevent Render free tier sleep
+    setInterval(async () => {
+      try {
+        await fetch(`${BACKEND_URL}/health`, { signal: AbortSignal.timeout(10000) });
+        console.log("[KEEP-ALIVE] Backend pinged successfully");
+      } catch (e) {
+        console.log("[KEEP-ALIVE] Backend ping failed — will retry");
+      }
+    }, 10 * 60 * 1000); // every 10 minutes
   });
 }
 
