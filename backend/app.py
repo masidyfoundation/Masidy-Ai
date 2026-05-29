@@ -46,6 +46,9 @@ class ChatRequest(BaseModel):
 
 class ImageRequest(BaseModel):
     prompt: str
+    style: str = "Photorealistic"
+    aspect_ratio: str = "1:1"
+    seed: int = None
     
 class SearchRequest(BaseModel):
     query: str
@@ -116,9 +119,14 @@ def list_available_models(tier: str = "FREE"):
 # ========== IMAGE GENERATION ==========
 @app.post("/generate-image")
 async def generate_image_endpoint(request: ImageRequest):
-    """Generate image from text prompt"""
+    """Generate real image from text prompt using FLUX model"""
     try:
-        result = await generate_image(request.prompt)
+        result = await generate_image(
+            request.prompt,
+            style=request.style,
+            aspect_ratio=request.aspect_ratio,
+            seed=request.seed
+        )
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail="Image generation is temporarily unavailable. Please try again.")

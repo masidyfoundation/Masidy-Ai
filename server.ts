@@ -316,9 +316,25 @@ async function startServer() {
     });
   });
 
-  // API: /api/models - Proxy to FastAPI backend
-  app.get("/api/models", async (req, res) => {
+  // API: /api/generate-image - Proxy to FastAPI backend
+  app.post("/api/generate-image", async (req, res) => {
     try {
+      const backendRes = await fetch(`${BACKEND_URL}/generate-image`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(req.body),
+        signal: AbortSignal.timeout(90000) // 90s — image gen can be slow
+      });
+      const data = await backendRes.json();
+      res.json(data);
+    } catch (err: any) {
+      console.error("Image generation proxy error:", err.message);
+      res.json({ success: false, error: "Image generation is temporarily unavailable. Please try again." });
+    }
+  });
+
+  // API: /api/models - Proxy to FastAPI backend
+  app.get("/api/models", async (req, res) => {    try {
       const tier = req.query.tier || "FREE";
       const backendRes = await fetch(`${BACKEND_URL}/models?tier=${encodeURIComponent(String(tier))}`);
       if (!backendRes.ok) {

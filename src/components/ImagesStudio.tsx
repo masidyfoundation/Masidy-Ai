@@ -1,294 +1,342 @@
-import React, { useState } from "react";
-import { Sparkles, Download, Copy, RefreshCw, Image as ImageIcon, Sliders, CheckCircle2, Eye, Compass, Maximize2 } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { Sparkles, Download, RefreshCw, ImageIcon, Maximize2, X, Wand2, Lock } from "lucide-react";
+
+const STYLES = [
+  { id: "Photorealistic", label: "Photorealistic", emoji: "📷" },
+  { id: "Digital Art", label: "Digital Art", emoji: "🎨" },
+  { id: "Cinematic", label: "Cinematic", emoji: "🎬" },
+  { id: "Anime", label: "Anime", emoji: "✨" },
+  { id: "Oil Painting", label: "Oil Painting", emoji: "🖼️" },
+  { id: "Cyberpunk", label: "Cyberpunk", emoji: "🌆" },
+  { id: "Fantasy", label: "Fantasy", emoji: "🔮" },
+  { id: "Minimalist", label: "Minimalist", emoji: "⬜" },
+  { id: "Watercolor", label: "Watercolor", emoji: "💧" },
+  { id: "3D Render", label: "3D Render", emoji: "🧊" },
+];
+
+const RATIOS = [
+  { id: "1:1", label: "1:1", desc: "Square" },
+  { id: "16:9", label: "16:9", desc: "Landscape" },
+  { id: "9:16", label: "9:16", desc: "Portrait" },
+  { id: "4:3", label: "4:3", desc: "Classic" },
+];
+
+const SUGGESTIONS = [
+  "A futuristic city at night with neon lights reflecting on wet streets",
+  "A serene Japanese garden with cherry blossoms and a koi pond",
+  "An astronaut floating in space with Earth in the background",
+  "A cozy coffee shop interior with warm lighting and books",
+  "A majestic dragon flying over snow-capped mountains",
+  "A minimalist home office with plants and natural light",
+];
+
+interface GeneratedImage {
+  url: string;
+  prompt: string;
+  style: string;
+  ratio: string;
+  seed: number;
+}
 
 export default function ImagesStudio() {
   const [prompt, setPrompt] = useState("");
-  const [selectedStyle, setSelectedStyle] = useState("Vaporwave Sunset");
-  const [aspectRatio, setAspectRatio] = useState("16:9");
-  const [resolution, setResolution] = useState("1080p HD");
-  const [renderSteps, setRenderSteps] = useState<string[]>([]);
-  const [isSynthesizing, setIsSynthesizing] = useState(false);
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [selectedStyle, setSelectedStyle] = useState("Photorealistic");
+  const [selectedRatio, setSelectedRatio] = useState("1:1");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [history, setHistory] = useState<GeneratedImage[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Creative preloaded design pool
-  const styleDesigns: { [key: string]: string } = {
-    "Vaporwave Sunset": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600&auto=format&fit=crop",
-    "Photorealistic Workspace": "https://images.unsplash.com/photo-1498050108023-c5249f4df085?q=80&w=600&auto=format&fit=crop",
-    "Fantasy Castles": "https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=600&auto=format&fit=crop",
-    "Futuristic Wireframe": "https://images.unsplash.com/photo-1508739773434-c26b3d09e071?q=80&w=600&auto=format&fit=crop",
-    "Corporate Isometric": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=600&auto=format&fit=crop",
-    "Cybernetic Avatar": "https://images.unsplash.com/photo-1563089145-599997674d42?q=80&w=600&auto=format&fit=crop",
-  };
+  const handleGenerate = async (customPrompt?: string) => {
+    const finalPrompt = customPrompt || prompt;
+    if (!finalPrompt.trim()) {
+      inputRef.current?.focus();
+      return;
+    }
 
-  const handleSynthesize = () => {
-    if (!prompt.trim()) return alert("Please specify a prompt to synthesize visual coordinates.");
-    setIsSynthesizing(true);
-    setRenderSteps([]);
+    setIsGenerating(true);
+    setError(null);
     setGeneratedImage(null);
 
-    const logs = [
-      "Analyzing prompt semantic vectors...",
-      "Resolving visual theme contrast coefficients...",
-      "Executing stable diffusion pass #1 (Form outlining)...",
-      "Executing stable diffusion pass #2 (Texture injection)...",
-      "Injecting atmospheric ambient shadows...",
-      "Upscaling and baking metadata layers...",
-      "Validating compression artifacts..."
-    ];
+    try {
+      const resp = await fetch("/api/generate-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: finalPrompt,
+          style: selectedStyle,
+          aspect_ratio: selectedRatio,
+        }),
+      });
 
-    logs.forEach((log, index) => {
-      setTimeout(() => {
-        setRenderSteps(prev => [...prev, log]);
-        if (index === logs.length - 1) {
-          setIsSynthesizing(false);
-          // Set image matching selected style or defaults
-          const matchedImage = styleDesigns[selectedStyle] || styleDesigns["Vaporwave Sunset"];
-          setGeneratedImage(matchedImage);
-        }
-      }, (index + 1) * 450);
-    });
+      const data = await resp.json();
+
+      if (data.success && data.url) {
+        const img: GeneratedImage = {
+          url: data.url,
+          prompt: finalPrompt,
+          style: selectedStyle,
+          ratio: selectedRatio,
+          seed: data.seed,
+        };
+        setGeneratedImage(img);
+        setHistory(prev => [img, ...prev.slice(0, 7)]);
+        if (customPrompt) setPrompt(customPrompt);
+      } else {
+        setError(data.error || "Something went wrong. Please try again.");
+      }
+    } catch (e) {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
-  const handleCopy = () => {
-    setCopied(true);
-    navigator.clipboard.writeText(prompt);
-    setTimeout(() => setCopied(false), 2000);
+  const handleDownload = async () => {
+    if (!generatedImage) return;
+    try {
+      const response = await fetch(generatedImage.url);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `masidy-${Date.now()}.jpg`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(generatedImage.url, "_blank");
+    }
+  };
+
+  const handleRegenerate = () => {
+    if (generatedImage) handleGenerate(generatedImage.prompt);
   };
 
   return (
-    <div id="images-studio" className="flex-1 bg-white dark:bg-[#0c0c0e] flex flex-col md:flex-row h-full overflow-hidden font-sans transition-colors duration-150">
-      
-      {/* 1. Configuration Sidebar (Left) */}
-      <div className="w-full md:w-80 border-r border-neutral-200 dark:border-zinc-800 bg-neutral-50 dark:bg-zinc-900/50 flex flex-col h-full shrink-0 select-none pb-12 overflow-y-auto">
-        
-        {/* Module title */}
-        <div className="p-4 border-b border-neutral-200 dark:border-zinc-805">
-          <div className="flex items-center space-x-2">
-            <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-neutral-800 dark:text-zinc-100">Masidy Visual Studio</h3>
-              <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">Model: Masidy Diffuse 2.0</p>
-            </div>
-          </div>
+    <div className="flex-1 bg-white dark:bg-[#0c0c0e] flex flex-col h-full overflow-hidden font-sans">
+
+      {/* Fullscreen overlay */}
+      {fullscreen && generatedImage && (
+        <div className="fixed inset-0 z-50 bg-black flex items-center justify-center" onClick={() => setFullscreen(false)}>
+          <button className="absolute top-4 right-4 p-2 bg-white/10 rounded-full text-white hover:bg-white/20 transition">
+            <X className="w-5 h-5" />
+          </button>
+          <img src={generatedImage.url} alt={generatedImage.prompt} className="max-w-full max-h-full object-contain" />
         </div>
+      )}
 
-        {/* Configurations Form */}
-        <div className="p-4 space-y-5">
-          
-          {/* Style presets selection */}
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-semibold text-neutral-500 dark:text-zinc-400 uppercase tracking-wider block">
-              Renderer Style Preset
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {Object.keys(styleDesigns).map((styleName) => (
-                <button
-                  key={styleName}
-                  type="button"
-                  onClick={() => setSelectedStyle(styleName)}
-                  className={`p-2 rounded-xl text-left text-xs transition-all border cursor-pointer ${
-                    selectedStyle === styleName
-                      ? "bg-neutral-900 dark:bg-zinc-100 text-white dark:text-black border-neutral-900 dark:border-zinc-100 font-semibold shadow-xs"
-                      : "bg-white dark:bg-zinc-800 text-neutral-605 dark:text-zinc-300 border-neutral-200 dark:border-zinc-700 hover:bg-neutral-50 dark:hover:bg-zinc-750"
-                  }`}
-                >
-                  <span className="block truncate">{styleName}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+      <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
 
-          {/* Aspect ratio slider selections */}
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-semibold text-neutral-500 dark:text-zinc-400 uppercase tracking-wider block">
-              Aspect Ratio Matcher
-            </label>
-            <div className="flex space-x-2">
-              {["1:1 Sq", "16:9 HD", "9:16 Port", "4:3 Classic"].map((ar) => (
-                <button
-                  key={ar}
-                  type="button"
-                  onClick={() => setAspectRatio(ar)}
-                  className={`flex-1 py-2 rounded-lg text-xs font-medium cursor-pointer transition-colors border ${
-                    aspectRatio === ar
-                      ? "bg-neutral-850 dark:bg-zinc-100 text-white dark:text-black border-neutral-850 dark:border-zinc-150"
-                      : "bg-white dark:bg-zinc-800 text-neutral-600 dark:text-zinc-300 border-neutral-200 dark:border-zinc-700 hover:bg-neutral-50 dark:hover:bg-zinc-750"
-                  }`}
-                >
-                  {ar}
-                </button>
-              ))}
-            </div>
-          </div>
+        {/* Left panel — controls */}
+        <div className="w-full md:w-72 border-r border-neutral-200 dark:border-zinc-800 bg-neutral-50 dark:bg-zinc-900/40 flex flex-col shrink-0 overflow-y-auto">
 
-          {/* Target resolution preferences */}
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-semibold text-neutral-500 dark:text-zinc-400 uppercase tracking-wider block">
-              Resolution Scale
-            </label>
-            <div className="flex space-x-2">
-              {["1080p HD", "2K UHD", "4K Extreme"].map((res) => (
-                <button
-                  key={res}
-                  type="button"
-                  onClick={() => setResolution(res)}
-                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors border ${
-                    resolution === res
-                      ? "bg-neutral-850 dark:bg-zinc-100 text-white dark:text-black border-neutral-850 dark:border-zinc-155"
-                      : "bg-white dark:bg-zinc-800 text-neutral-600 dark:text-zinc-300 border-neutral-200 dark:border-zinc-700 hover:bg-neutral-50 dark:hover:bg-zinc-750"
-                  }`}
-                >
-                  {res}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-neutral-200 dark:border-zinc-800">
-             <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-900/30 text-amber-800 dark:text-amber-305 text-xs leading-relaxed space-y-1">
-                <span className="font-bold flex items-center space-x-1">
-                   <span>Unlimited GPU Pool active</span>
-                </span>
-                <p>Compile visual prototypes instantaneously with lightning-fast cloud accelerators.</p>
-             </div>
-          </div>
-
-        </div>
-
-      </div>
-
-      {/* 2. Visual Render Output Pane (Right) */}
-      <div className="flex-1 bg-neutral-50 dark:bg-[#0c0c0e] p-4 md:p-8 flex flex-col justify-between overflow-y-auto">
-        
-        {/* Core display area */}
-        <div className="flex-1 flex items-center justify-center max-w-2xl mx-auto w-full">
-          
-          {isSynthesizing ? (
-            /* Lively Step-by-Step progress bar list */
-            <div className="w-full max-w-md bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-neutral-200 dark:border-zinc-800 shadow-sm space-y-5">
-              <div className="flex items-center space-x-3">
-                <RefreshCw className="w-5 h-5 text-indigo-600 dark:text-indigo-400 animate-spin" />
-                <span className="text-sm font-semibold text-neutral-800 dark:text-zinc-200">Synthesizing Visual Core</span>
+          {/* Header */}
+          <div className="p-4 border-b border-neutral-200 dark:border-zinc-800">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-sm">
+                <Wand2 className="w-4 h-4 text-white" />
               </div>
-              
-              {/* Fake status bar loader */}
-              <div className="w-full bg-neutral-100 dark:bg-zinc-800 rounded-full h-1.5 overflow-hidden">
-                <div 
-                  className="bg-indigo-600 dark:bg-indigo-400 h-1.5 rounded-full transition-all duration-300" 
-                  style={{ width: `${(renderSteps.length / 7) * 100}%` }}
-                ></div>
+              <div>
+                <h3 className="text-sm font-bold text-neutral-900 dark:text-zinc-100">Masidy Visual Studio</h3>
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400">Powered by FLUX · Free</p>
               </div>
+            </div>
+          </div>
 
-              {/* Progress Logs */}
-              <div className="space-y-1.5 font-mono text-[11px] text-neutral-500 dark:text-zinc-400 bg-neutral-50 dark:bg-zinc-950 p-4 rounded-xl border border-neutral-200 dark:border-zinc-800/80 overflow-y-auto max-h-48 leading-relaxed">
-                {renderSteps.map((step, idx) => (
-                  <div key={idx} className="flex items-center space-x-2">
-                    <span className="text-emerald-500 font-bold">✓</span>
-                    <span>{step}</span>
-                  </div>
+          <div className="p-4 space-y-5 flex-1">
+
+            {/* Style selector */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-neutral-500 dark:text-zinc-400 uppercase tracking-wider block">Style</label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {STYLES.map((style) => (
+                  <button
+                    key={style.id}
+                    onClick={() => setSelectedStyle(style.id)}
+                    className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer text-left ${
+                      selectedStyle === style.id
+                        ? "bg-black dark:bg-white text-white dark:text-black shadow-sm"
+                        : "bg-white dark:bg-zinc-800 text-neutral-600 dark:text-zinc-300 border border-neutral-200 dark:border-zinc-700 hover:border-neutral-300 dark:hover:border-zinc-600"
+                    }`}
+                  >
+                    <span>{style.emoji}</span>
+                    <span className="truncate">{style.label}</span>
+                  </button>
                 ))}
               </div>
             </div>
-          ) : generatedImage ? (
-            /* Rendered Image Viewer */
-            <div className="w-full bg-white dark:bg-zinc-900/40 p-4 rounded-3xl border border-neutral-200 dark:border-zinc-800 shadow-xs space-y-4 animate-fade-in text-left">
-              
-              {/* Actual Image Tag */}
-              <div className="relative rounded-2xl overflow-hidden bg-neutral-900 border border-neutral-200 dark:border-zinc-800 group flex items-center justify-center">
-                <img 
-                  src={generatedImage} 
-                  alt="Generated visual asset" 
-                  className="max-h-[380px] object-cover rounded-2xl w-full "
-                  referrerPolicy="no-referrer"
-                />
-                
-                {/* Visual hover quick indicators */}
-                <span className="absolute bottom-3 right-3 py-1 px-2.5 bg-black/70 text-white font-mono text-[10px] rounded uppercase tracking-wider">
-                  {resolution} | {aspectRatio}
-                </span>
-              </div>
 
-              {/* Interaction controllers */}
-              <div className="flex items-center justify-between pt-1">
-                <div>
-                  <h4 className="text-sm font-bold text-neutral-800 dark:text-zinc-100 truncate max-w-xs">{prompt}</h4>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-450 font-medium">Style option: {selectedStyle}</p>
-                </div>
-
-                <div className="flex space-x-2">
+            {/* Aspect ratio */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-neutral-500 dark:text-zinc-400 uppercase tracking-wider block">Aspect Ratio</label>
+              <div className="grid grid-cols-4 gap-1.5">
+                {RATIOS.map((ratio) => (
                   <button
-                    onClick={() => alert(`Copied prompt metadata to clipboard.`)}
-                    className="p-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-xl text-neutral-650 dark:text-zinc-300 cursor-pointer transition-colors"
-                    title="Copy attributes config"
+                    key={ratio.id}
+                    onClick={() => setSelectedRatio(ratio.id)}
+                    className={`flex flex-col items-center py-2 px-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                      selectedRatio === ratio.id
+                        ? "bg-black dark:bg-white text-white dark:text-black shadow-sm"
+                        : "bg-white dark:bg-zinc-800 text-neutral-600 dark:text-zinc-300 border border-neutral-200 dark:border-zinc-700 hover:border-neutral-300"
+                    }`}
                   >
-                    <Copy className="w-4 h-4" />
+                    <span className="font-bold">{ratio.label}</span>
+                    <span className="text-[9px] opacity-70">{ratio.desc}</span>
                   </button>
-                  <a
-                    href={generatedImage}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="p-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-xl text-neutral-650 dark:text-zinc-300 cursor-pointer transition-colors flex items-center justify-center"
-                    title="View Full Quality"
-                  >
-                    <Maximize2 className="w-4 h-4" />
-                  </a>
-                  <button
-                    onClick={() => alert("Downloading source elements completed successfully.")}
-                    className="flex items-center space-x-1.5 py-2 px-4 bg-black dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-100 text-white dark:text-black rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Download</span>
-                  </button>
-                </div>
-              </div>
-
-            </div>
-          ) : (
-            /* Starting Instructions empty display screen */
-            <div className="text-center space-y-4 max-w-sm select-none">
-              <div className="w-14 h-14 bg-white dark:bg-zinc-900 border border-neutral-200 dark:border-zinc-800 text-neutral-400 rounded-2xl flex items-center justify-center mx-auto shadow-xs">
-                <ImageIcon className="w-6 h-6 text-neutral-400 dark:text-zinc-500" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-neutral-800 dark:text-zinc-100">Visual Art Renderer</h4>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mt-1">
-                  Specify creative parameters below or choose design style templates to instantiate visual matrices instantly.
-                </p>
+                ))}
               </div>
             </div>
-          )}
 
-        </div>
-
-        {/* Input Bar (Bottom) */}
-        <div className="max-w-2xl mx-auto w-full pt-4">
-          <div className="flex items-center bg-white dark:bg-zinc-900 border border-neutral-200 dark:border-zinc-800 shadow-xs rounded-full p-1.5 pl-4 focus-within:border-neutral-300 dark:focus-within:border-zinc-750 transition-colors">
-            
-            <input
-              type="text"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              disabled={isSynthesizing}
-              placeholder="What do you want to create? (e.g. elegant workspace with warm plants)"
-              className="flex-1 bg-transparent border-none text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-zinc-500 text-sm focus:outline-none focus:ring-0 py-1.5"
-            />
-
-            <button
-              onClick={handleSynthesize}
-              disabled={isSynthesizing || !prompt.trim()}
-              className="px-5 py-2 rounded-full text-xs font-bold bg-neutral-900 dark:bg-zinc-100 text-white dark:text-black enabled:hover:bg-neutral-800 dark:enabled:hover:bg-zinc-200 disabled:bg-neutral-100 dark:disabled:bg-zinc-800 disabled:text-neutral-400 dark:disabled:text-zinc-600 cursor-pointer transition-colors"
-            >
-              Render Visual
-            </button>
+            {/* History */}
+            {history.length > 0 && (
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold text-neutral-500 dark:text-zinc-400 uppercase tracking-wider block">Recent</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {history.slice(0, 6).map((img, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setGeneratedImage(img)}
+                      className="aspect-square rounded-lg overflow-hidden border-2 border-transparent hover:border-indigo-500 transition-all cursor-pointer"
+                    >
+                      <img src={img.url} alt={img.prompt} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
           </div>
         </div>
 
-      </div>
+        {/* Right panel — output */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
 
+          {/* Main canvas */}
+          <div className="flex-1 flex items-center justify-center p-6 overflow-y-auto">
+
+            {isGenerating ? (
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center mx-auto shadow-lg animate-pulse">
+                  <Wand2 className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-neutral-800 dark:text-zinc-100">Generating your image...</p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">This takes 10–20 seconds</p>
+                </div>
+                <div className="w-48 h-1.5 bg-neutral-200 dark:bg-zinc-800 rounded-full overflow-hidden mx-auto">
+                  <div className="h-full bg-gradient-to-r from-violet-500 to-indigo-600 rounded-full animate-pulse w-3/4" />
+                </div>
+              </div>
+
+            ) : error ? (
+              <div className="text-center space-y-3 max-w-sm">
+                <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto">
+                  <X className="w-6 h-6 text-red-500" />
+                </div>
+                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                <button onClick={() => handleGenerate()} className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black text-xs font-bold rounded-lg cursor-pointer">
+                  Try Again
+                </button>
+              </div>
+
+            ) : generatedImage ? (
+              <div className="w-full max-w-2xl space-y-4">
+                {/* Image */}
+                <div className="relative rounded-2xl overflow-hidden bg-neutral-900 shadow-xl group">
+                  <img
+                    src={generatedImage.url}
+                    alt={generatedImage.prompt}
+                    className="w-full object-contain max-h-[500px]"
+                    onError={() => setError("Image failed to load. Please try again.")}
+                  />
+                  <button
+                    onClick={() => setFullscreen(true)}
+                    className="absolute top-3 right-3 p-2 bg-black/50 hover:bg-black/70 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                  >
+                    <Maximize2 className="w-4 h-4" />
+                  </button>
+                  <div className="absolute bottom-3 left-3 px-2 py-1 bg-black/60 text-white text-[10px] font-mono rounded">
+                    {generatedImage.style} · {generatedImage.ratio}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate max-w-xs">{generatedImage.prompt}</p>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={handleRegenerate}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-neutral-100 dark:bg-zinc-800 hover:bg-neutral-200 dark:hover:bg-zinc-700 text-neutral-700 dark:text-zinc-300 text-xs font-semibold rounded-lg cursor-pointer transition-colors"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      Regenerate
+                    </button>
+                    <button
+                      onClick={handleDownload}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-black dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-100 text-white dark:text-black text-xs font-bold rounded-lg cursor-pointer transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Download
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+            ) : (
+              <div className="text-center space-y-6 max-w-md">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/10 to-indigo-600/10 border border-violet-200 dark:border-violet-800/30 flex items-center justify-center mx-auto">
+                  <ImageIcon className="w-7 h-7 text-violet-500 dark:text-violet-400" />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold text-neutral-800 dark:text-zinc-100">Create anything you imagine</h4>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
+                    Type a description below and Masidy will generate a high-quality image using FLUX AI.
+                  </p>
+                </div>
+                {/* Suggestions */}
+                <div className="grid grid-cols-1 gap-2 text-left">
+                  {SUGGESTIONS.slice(0, 3).map((s, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleGenerate(s)}
+                      className="px-3 py-2.5 bg-neutral-50 dark:bg-zinc-900 hover:bg-neutral-100 dark:hover:bg-zinc-800 border border-neutral-200 dark:border-zinc-800 rounded-xl text-xs text-neutral-600 dark:text-zinc-400 text-left cursor-pointer transition-colors"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Input bar */}
+          <div className="p-4 border-t border-neutral-200 dark:border-zinc-800 bg-white dark:bg-[#0c0c0e]">
+            <div className="flex gap-2 max-w-2xl mx-auto">
+              <input
+                ref={inputRef}
+                type="text"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !isGenerating && handleGenerate()}
+                disabled={isGenerating}
+                placeholder="Describe what you want to create..."
+                className="flex-1 px-4 py-3 bg-neutral-50 dark:bg-zinc-900 border border-neutral-200 dark:border-zinc-700 rounded-xl text-sm text-neutral-900 dark:text-zinc-100 placeholder:text-neutral-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              />
+              <button
+                onClick={() => handleGenerate()}
+                disabled={isGenerating || !prompt.trim()}
+                className="px-5 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl cursor-pointer transition-all shadow-sm hover:shadow-md flex items-center gap-2 shrink-0"
+              >
+                <Wand2 className="w-4 h-4" />
+                <span className="hidden sm:inline">Generate</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
     </div>
   );
 }
