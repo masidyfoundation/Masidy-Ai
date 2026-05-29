@@ -49,46 +49,54 @@ export default function ImagesStudio() {
   const [history, setHistory] = useState<GeneratedImage[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const STYLE_ENHANCERS: Record<string, string> = {
+    "Photorealistic": "photorealistic, ultra detailed, 8k, professional photography, sharp focus, cinematic lighting",
+    "Digital Art": "digital art, concept art, highly detailed, vibrant colors, artstation trending, smooth",
+    "Cinematic": "cinematic shot, movie still, dramatic lighting, anamorphic lens, film grain, epic composition",
+    "Anime": "anime style, studio ghibli inspired, detailed illustration, vibrant, clean lines",
+    "Oil Painting": "oil painting, classical art style, rich textures, masterpiece, museum quality",
+    "Minimalist": "minimalist design, clean, simple, modern, white background, elegant",
+    "Fantasy": "fantasy art, magical, ethereal, epic, detailed environment, mystical atmosphere",
+    "Cyberpunk": "cyberpunk, neon lights, futuristic city, rain, dark atmosphere, blade runner style",
+    "Watercolor": "watercolor painting, soft colors, artistic, flowing, delicate brushstrokes",
+    "3D Render": "3d render, octane render, blender, physically based rendering, studio lighting, 4k",
+  };
+
+  const DIMENSIONS: Record<string, [number, number]> = {
+    "1:1": [1024, 1024], "16:9": [1344, 768], "9:16": [768, 1344], "4:3": [1152, 896],
+  };
+
   const handleGenerate = async (customPrompt?: string) => {
     const finalPrompt = customPrompt || prompt;
-    if (!finalPrompt.trim()) {
-      inputRef.current?.focus();
-      return;
-    }
+    if (!finalPrompt.trim()) { inputRef.current?.focus(); return; }
 
     setIsGenerating(true);
     setError(null);
     setGeneratedImage(null);
 
     try {
-      const resp = await fetch("/api/generate-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: finalPrompt,
-          style: selectedStyle,
-          aspect_ratio: selectedRatio,
-        }),
+      const enhancer = STYLE_ENHANCERS[selectedStyle] || "";
+      const fullPrompt = `${finalPrompt}, ${enhancer}`;
+      const [width, height] = DIMENSIONS[selectedRatio] || [1024, 1024];
+      const seed = Math.floor(Math.random() * 999999);
+      const encodedPrompt = encodeURIComponent(fullPrompt);
+      const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&model=flux&nologo=true`;
+
+      // Pre-load to confirm generation succeeded
+      await new Promise<void>((resolve, reject) => {
+        const img = new window.Image();
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("Failed"));
+        img.src = imageUrl;
+        setTimeout(() => reject(new Error("Timeout")), 90000);
       });
 
-      const data = await resp.json();
-
-      if (data.success && data.url) {
-        const img: GeneratedImage = {
-          url: data.url,
-          prompt: finalPrompt,
-          style: selectedStyle,
-          ratio: selectedRatio,
-          seed: data.seed,
-        };
-        setGeneratedImage(img);
-        setHistory(prev => [img, ...prev.slice(0, 7)]);
-        if (customPrompt) setPrompt(customPrompt);
-      } else {
-        setError(data.error || "Something went wrong. Please try again.");
-      }
+      const generated: GeneratedImage = { url: imageUrl, prompt: finalPrompt, style: selectedStyle, ratio: selectedRatio, seed };
+      setGeneratedImage(generated);
+      setHistory(prev => [generated, ...prev.slice(0, 7)]);
+      if (customPrompt) setPrompt(customPrompt);
     } catch (e) {
-      setError("Something went wrong. Please try again.");
+      setError("Something went wrong generating your image. Please try again.");
     } finally {
       setIsGenerating(false);
     }
