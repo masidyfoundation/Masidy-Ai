@@ -765,7 +765,7 @@ async function startServer() {
         log("CONV_RESOLVE", `Allocated core cache sequence: ${activeConvId}`, "SUCCESS");
       }
 
-      // Save user message (awaited)
+      // Save to local DB only (backend handles Supabase persistence)
       const userMsg: LocalMessage = {
         id: crypto.randomUUID ? crypto.randomUUID() : `msg-${Math.random().toString(36).substring(2, 9)}`,
         conversation_id: activeConvId,
@@ -774,15 +774,7 @@ async function startServer() {
         created_at: new Date().toISOString(),
       };
       db.messages.push(userMsg);
-      const { error: userMsgErr } = await supabaseAdmin.from("messages").insert({
-        id: userMsg.id,
-        conversation_id: activeConvId,
-        role: "user",
-        content: message
-      });
-      if (userMsgErr) console.error("Supabase user msg save error:", userMsgErr.message);
-      else console.log("✅ User message saved to Supabase");
-      log("INPUT_STORE", "Buffered instruction stack to localized persistence", "INFO");
+      log("INPUT_STORE", "Message buffered locally", "INFO");
 
       const msgLower = message.toLowerCase();
       const needsSearch = /search|research|google|weather|price|stock|recent|current|latest|news|how many|who is|upcoming/i.test(msgLower);
@@ -820,7 +812,7 @@ async function startServer() {
         answerText = "Masidy is starting up — this can take up to 30 seconds on first load. Please try again in a moment.";
       }
 
-      // Persist AI Answer (awaited)
+      // Save to local DB only (backend handles Supabase persistence)
       const aiMsg: LocalMessage = {
         id: crypto.randomUUID ? crypto.randomUUID() : `msg-${Math.random().toString(36).substring(2, 9)}`,
         conversation_id: activeConvId,
@@ -830,14 +822,6 @@ async function startServer() {
       };
       db.messages.push(aiMsg);
       saveDatabase(db);
-      const { error: aiMsgErr } = await supabaseAdmin.from("messages").insert({
-        id: aiMsg.id,
-        conversation_id: activeConvId,
-        role: "assistant",
-        content: answerText
-      });
-      if (aiMsgErr) console.error("Supabase AI msg save error:", aiMsgErr.message);
-      else console.log("✅ AI message saved to Supabase");
       log("OUTPUT_STORE", "Answer registered. Cache state synchronized.", "SUCCESS");
 
       res.json({
