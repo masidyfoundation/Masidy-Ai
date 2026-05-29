@@ -809,7 +809,7 @@ async function startServer() {
         log("MODEL_ROUTE", "Inference complete, backend response decoded", "SUCCESS");
       } catch (err: any) {
         log("MODEL_ROUTE", `Backend unavailable: ${err.message}`, "WARNING");
-        answerText = "Masidy is starting up — this can take up to 30 seconds on first load. Please try again in a moment.";
+        answerText = "Too many requests. Please wait a moment before trying again.";
       }
 
       // Save to local DB only (backend handles Supabase persistence)
